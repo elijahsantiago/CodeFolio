@@ -50,8 +50,10 @@ interface ShowcaseEditorProps {
   onContentBoxTrimColorChange?: (color: string) => void
   friends?: Friend[]
   onFriendsChange?: (friends: Friend[]) => void
-  theme?: "light-business" | "dark-business" | "current"
-  onThemeChange?: (theme: "light-business" | "dark-business" | "current") => void
+  theme?: "light-business" | "dark-business" | "business-casual"
+  onThemeChange?: (theme: "light-business" | "dark-business" | "business-casual") => void
+  resumeFile?: string
+  onResumeFileChange?: (file: string) => void
 }
 
 export function ShowcaseEditor({
@@ -73,8 +75,10 @@ export function ShowcaseEditor({
   onContentBoxTrimColorChange,
   friends = [],
   onFriendsChange,
-  theme = "current",
+  theme = "light-business",
   onThemeChange,
+  resumeFile = "",
+  onResumeFileChange,
 }: ShowcaseEditorProps) {
   const [editingItem, setEditingItem] = useState<ShowcaseItem | null>(null)
   const [editingItemType, setEditingItemType] = useState<"image" | "video" | "text">("image")
@@ -92,7 +96,9 @@ export function ShowcaseEditor({
   const [isLayoutDialogOpen, setIsLayoutDialogOpen] = useState(false)
   const [uploadedBackgroundImage, setUploadedBackgroundImage] = useState<string | null>(null)
   const [isMainEditorOpen, setIsMainEditorOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<"profile" | "showcase" | "appearance" | "layout" | "friends">("profile")
+  const [activeTab, setActiveTab] = useState<"profile" | "showcase" | "resume" | "appearance" | "layout" | "friends">(
+    "profile",
+  )
   const [newFriendName, setNewFriendName] = useState("")
 
   const handleDragEnd = (result: DropResult) => {
@@ -323,9 +329,11 @@ export function ShowcaseEditor({
                     {[
                       { id: "profile", label: "Profile Info", icon: "👤" },
                       { id: "showcase", label: "Showcase Items", icon: "🎮" },
+                      { id: "resume", label: "Resume", icon: "📄" },
                       { id: "appearance", label: "Appearance", icon: "🎨" },
                       { id: "layout", label: "Layout", icon: "📐" },
-                      { id: "friends", label: "Friends", icon: "👥" },
+                      // Updated friends tab label to connections
+                      { id: "friends", label: "Connections", icon: "👥" },
                     ].map((tab) => (
                       <button
                         key={tab.id}
@@ -524,6 +532,55 @@ export function ShowcaseEditor({
                     </div>
                   )}
 
+                  {activeTab === "resume" && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold">Resume Upload</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Upload Resume (PDF)</Label>
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="file"
+                                accept=".pdf"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0]
+                                  if (file) {
+                                    handleFileUpload(file, (url) => {
+                                      onResumeFileChange?.(url)
+                                    })
+                                  }
+                                }}
+                                className="flex-1"
+                              />
+                              <Button type="button" variant="outline" size="sm" className="gap-1 bg-transparent">
+                                <Upload className="h-3 w-3" />
+                                Upload
+                              </Button>
+                            </div>
+                            {resumeFile && (
+                              <div className="flex items-center gap-2 text-sm text-green-600">
+                                <ImageIcon className="h-4 w-4" />
+                                Resume uploaded successfully
+                              </div>
+                            )}
+                            {resumeFile && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onResumeFileChange?.("")}
+                                className="w-full"
+                              >
+                                Remove Resume
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {activeTab === "appearance" && (
                     <div className="space-y-6">
                       <h3 className="text-lg font-semibold">Customize Appearance</h3>
@@ -542,7 +599,11 @@ export function ShowcaseEditor({
                               name: "Dark Business",
                               description: "Sleek professional dark theme",
                             },
-                            { id: "current", name: "Gaming Theme", description: "Current green gaming aesthetic" },
+                            {
+                              id: "business-casual",
+                              name: "Business Casual",
+                              description: "Warm and approachable professional theme",
+                            },
                           ].map((themeOption) => (
                             <Card
                               key={themeOption.id}
@@ -680,19 +741,19 @@ export function ShowcaseEditor({
                   {activeTab === "friends" && (
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold">Manage Friends</h3>
-                        <Badge variant="outline">{friends.length} friends</Badge>
+                        <h3 className="text-lg font-semibold">Manage Connections</h3>
+                        <Badge variant="outline">{friends.length} connections</Badge>
                       </div>
 
                       <div className="flex gap-2">
                         <Input
-                          placeholder="Enter friend's name"
+                          placeholder="Enter connection's name"
                           value={newFriendName}
                           onChange={(e) => setNewFriendName(e.target.value)}
                           onKeyDown={(e) => e.key === "Enter" && handleAddFriend()}
                         />
                         <Button onClick={handleAddFriend} disabled={!newFriendName.trim()}>
-                          Add Friend
+                          Add Connection
                         </Button>
                       </div>
 
@@ -735,7 +796,7 @@ export function ShowcaseEditor({
                         ))}
                         {friends.length === 0 && (
                           <p className="text-muted-foreground text-center py-8">
-                            No friends added yet. Add some friends to get started!
+                            No connections added yet. Add some connections to get started!
                           </p>
                         )}
                       </div>

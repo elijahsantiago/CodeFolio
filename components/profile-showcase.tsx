@@ -35,6 +35,7 @@ interface ProfileShowcaseProps {
   contentBoxColor?: string
   contentBoxTrimColor?: string
   friends?: Friend[]
+  resumeFile?: string
 }
 
 export function ProfileShowcase({
@@ -43,14 +44,17 @@ export function ProfileShowcase({
   profileName,
   profileDescription,
   layout = "default",
-  backgroundColor = "#0a0a0a",
+  backgroundColor = "#ffffff",
   backgroundImage,
-  contentBoxColor = "#1a1a1a",
-  contentBoxTrimColor = "#22c55e",
+  contentBoxColor = "#ffffff",
+  contentBoxTrimColor = "#6b7280",
   friends = [],
+  resumeFile = "",
 }: ProfileShowcaseProps) {
   const [focusedItem, setFocusedItem] = useState<ShowcaseItem | null>(null)
   const [showConnections, setShowConnections] = useState(false)
+  const [activeTab, setActiveTab] = useState<"showcase" | "resume">("showcase")
+  const [showResumeModal, setShowResumeModal] = useState(false)
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -137,7 +141,8 @@ export function ProfileShowcase({
             <img
               src={profilePicture || "/placeholder.svg?height=120&width=120&query=professional profile avatar"}
               alt="Profile Picture"
-              className="w-32 h-32 rounded-full object-cover border-2 border-primary mx-auto mb-4"
+              className="w-32 h-32 rounded-full object-cover border-2 mx-auto mb-4"
+              style={{ borderColor: contentBoxTrimColor }}
             />
             <h1 className="text-4xl font-bold mb-2">{profileName || "Profile Showcase"}</h1>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
@@ -165,7 +170,8 @@ export function ProfileShowcase({
               <img
                 src={profilePicture || "/placeholder.svg?height=120&width=120&query=professional profile avatar"}
                 alt="Profile Picture"
-                className="w-16 h-16 rounded-full object-cover border-2 border-primary"
+                className="w-16 h-16 rounded-full object-cover border-2"
+                style={{ borderColor: contentBoxTrimColor }}
               />
               <div>
                 <h1 className="text-2xl font-bold">{profileName || "Profile Showcase"}</h1>
@@ -194,7 +200,8 @@ export function ProfileShowcase({
               <img
                 src={profilePicture || "/placeholder.svg?height=120&width=120&query=professional profile avatar"}
                 alt="Profile Picture"
-                className="w-20 h-20 rounded-lg object-cover border-2 border-primary"
+                className="w-20 h-20 rounded-lg object-cover border-2"
+                style={{ borderColor: contentBoxTrimColor }}
               />
               <div className="flex-1">
                 <h1 className="text-3xl font-bold mb-2">{profileName || "Profile Showcase"}</h1>
@@ -212,7 +219,7 @@ export function ProfileShowcase({
                   className="text-muted-foreground hover:text-foreground"
                 >
                   <Users className="h-4 w-4 mr-2" />
-                  {friends.length} Connections
+                  {friends.length}
                 </Button>
               )}
             </div>
@@ -226,7 +233,8 @@ export function ProfileShowcase({
               <img
                 src={profilePicture || "/placeholder.svg?height=120&width=120&query=professional profile avatar"}
                 alt="Profile Picture"
-                className="w-40 h-40 rounded-full object-cover border-4 border-primary mx-auto mb-6 shadow-lg"
+                className="w-40 h-40 rounded-full object-cover border-4 mx-auto mb-6 shadow-lg"
+                style={{ borderColor: contentBoxTrimColor }}
               />
               <h1 className="text-5xl font-bold mb-4">{profileName || "Profile Showcase"}</h1>
               <p className="text-muted-foreground text-xl max-w-3xl mx-auto leading-relaxed">
@@ -242,7 +250,7 @@ export function ProfileShowcase({
                   className="text-muted-foreground hover:text-foreground"
                 >
                   <Users className="h-4 w-4 mr-2" />
-                  {friends.length} Connections
+                  {friends.length}
                 </Button>
               )}
             </div>
@@ -254,9 +262,6 @@ export function ProfileShowcase({
             <div className="flex-1">
               <div className="flex items-center gap-4 mb-2">
                 <h1 className="text-3xl font-bold">{profileName || "Profile Showcase"}</h1>
-                <Badge variant="secondary" className="bg-primary text-primary-foreground border-primary">
-                  Pro
-                </Badge>
                 {friends.length > 0 && (
                   <Button
                     variant="ghost"
@@ -277,7 +282,8 @@ export function ProfileShowcase({
               <img
                 src={profilePicture || "/placeholder.svg?height=120&width=120&query=professional profile avatar"}
                 alt="Profile Picture"
-                className="w-24 h-24 rounded-full object-cover border-2 border-primary"
+                className="w-24 h-24 rounded-full object-cover border-2"
+                style={{ borderColor: contentBoxTrimColor }}
               />
             </div>
           </div>
@@ -397,13 +403,110 @@ export function ProfileShowcase({
         <div className="p-6 rounded-lg">
           {getProfileLayout()}
 
-          <div className={`mt-8 ${getLayoutClasses()}`}>
-            {items.map((item, index) => renderShowcaseItem(item, index))}
+          <div className="mt-8 mb-6 flex items-center justify-between">
+            <div className="flex gap-1 bg-muted/50 p-1 rounded-lg border">
+              <button
+                onClick={() => setActiveTab("showcase")}
+                className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                  activeTab === "showcase"
+                    ? "bg-background text-foreground shadow-sm border border-border"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                }`}
+              >
+                Portfolio Showcase
+              </button>
+              {resumeFile && (
+                <button
+                  onClick={() => setActiveTab("resume")}
+                  className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                    activeTab === "resume"
+                      ? "bg-background text-foreground shadow-sm border border-border"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                  }`}
+                >
+                  Resume
+                </button>
+              )}
+            </div>
+
+            {resumeFile && (
+              <Button
+                onClick={() => setShowResumeModal(true)}
+                variant="outline"
+                size="sm"
+                className="gap-2 bg-background/50 hover:bg-background border-border/50"
+              >
+                <ImageIcon className="h-4 w-4" />
+                View Resume
+              </Button>
+            )}
           </div>
+
+          {activeTab === "showcase" && (
+            <div className={getLayoutClasses()}>{items.map((item, index) => renderShowcaseItem(item, index))}</div>
+          )}
+
+          {activeTab === "resume" && resumeFile && (
+            <div className="bg-card/50 backdrop-blur-sm rounded-xl border border-border/50 p-8 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-semibold text-foreground">Professional Resume</h3>
+                <Button onClick={() => setShowResumeModal(true)} variant="outline" size="sm" className="gap-2">
+                  <ImageIcon className="h-4 w-4" />
+                  Full Screen
+                </Button>
+              </div>
+              <div className="bg-background rounded-lg border border-border overflow-hidden shadow-inner">
+                <iframe
+                  src={resumeFile}
+                  className="w-full h-[700px]"
+                  title="Resume"
+                  style={{ border: "none" }}
+                  onLoad={() => console.log("[v0] Resume loaded successfully")}
+                  onError={() => console.log("[v0] Resume failed to load")}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {renderConnectionsModal()}
+
+      <Dialog open={showResumeModal} onOpenChange={setShowResumeModal}>
+        <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0">
+          <div className="relative h-[95vh]">
+            <div className="absolute top-4 right-4 z-10 flex gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  const link = document.createElement("a")
+                  link.href = resumeFile
+                  link.download = `${profileName || "Resume"}.pdf`
+                  link.click()
+                }}
+                className="bg-background/90 hover:bg-background"
+              >
+                Download
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="bg-background/90 hover:bg-background"
+                onClick={() => setShowResumeModal(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <iframe
+              src={resumeFile}
+              className="w-full h-full rounded-lg"
+              title="Resume - Full Screen"
+              style={{ border: "none" }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!focusedItem} onOpenChange={() => setFocusedItem(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
