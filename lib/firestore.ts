@@ -47,7 +47,7 @@ export interface ShowcaseItem {
 // Create or update user profile
 export async function saveUserProfile(userId: string, profileData: Partial<UserProfile>): Promise<void> {
   if (!isFirebaseConfigured() || !db) {
-    console.warn("Firebase not configured, skipping profile save")
+    console.log("[v0] Firebase not configured, skipping profile save")
     return
   }
 
@@ -70,14 +70,26 @@ export async function saveUserProfile(userId: string, profileData: Partial<UserP
     if (profileSnap.exists()) {
       // Update existing profile
       await updateDoc(profileRef, dataToSave)
+      console.log("[v0] Profile updated successfully")
     } else {
       // Create new profile
       await setDoc(profileRef, {
         ...dataToSave,
         createdAt: serverTimestamp(),
       })
+      console.log("[v0] New profile created successfully")
     }
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message?.includes("client is offline") || error?.code === "unavailable") {
+      console.log("[v0] Firebase is offline, profile changes saved locally only")
+      return
+    }
+
+    if (error?.message?.includes("Missing or insufficient permissions") || error?.code === "permission-denied") {
+      console.log("[v0] Firebase permissions error - database may need security rules configured")
+      throw new Error("FIREBASE_PERMISSIONS_ERROR")
+    }
+
     console.error("Error saving profile:", error)
     throw error
   }
@@ -86,7 +98,7 @@ export async function saveUserProfile(userId: string, profileData: Partial<UserP
 // Get user profile by userId
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
   if (!isFirebaseConfigured() || !db) {
-    console.warn("Firebase not configured, returning null profile")
+    console.log("[v0] Firebase not configured, returning null profile")
     return null
   }
 
@@ -95,11 +107,23 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     const profileSnap = await getDoc(profileRef)
 
     if (profileSnap.exists()) {
+      console.log("[v0] Profile loaded successfully from Firestore")
       return { id: profileSnap.id, ...profileSnap.data() } as UserProfile
     }
 
+    console.log("[v0] No profile found in Firestore")
     return null
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message?.includes("client is offline") || error?.code === "unavailable") {
+      console.log("[v0] Firebase is offline, falling back to local profile")
+      return null
+    }
+
+    if (error?.message?.includes("Missing or insufficient permissions") || error?.code === "permission-denied") {
+      console.log("[v0] Firebase permissions error - database may need security rules configured")
+      throw new Error("FIREBASE_PERMISSIONS_ERROR")
+    }
+
     console.error("Error getting profile:", error)
     throw error
   }
