@@ -13,7 +13,6 @@ import {
   type Timestamp,
 } from "firebase/firestore"
 import { db, isFirebaseConfigured } from "./firebase"
-import { auth } from "./firebase"
 
 // Profile data structure
 export interface UserProfile {
@@ -45,24 +44,22 @@ export interface ShowcaseItem {
   description: string
 }
 
+// Create or update user profile
 export async function saveUserProfile(userId: string, profileData: Partial<UserProfile>): Promise<void> {
-  if (!isFirebaseConfigured() || !db) {
-    console.log("[v0] Firebase not configured, skipping profile save")
+  if (!isFirebaseConfigured()) {
+    console.warn("Firebase not configured, skipping profile save")
     return
   }
 
-  // Check if user is authenticated
-  if (!auth?.currentUser) {
-    console.log("[v0] No authenticated user for save operation, waiting...")
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    if (!auth?.currentUser) {
-      console.log("[v0] Still no authenticated user for save operation")
-      throw new Error("FIREBASE_PERMISSIONS_ERROR")
-    }
+  if (!db) {
+    console.warn("Firestore database not initialized")
+    return
   }
 
-  console.log("[v0] Authenticated user for save:", auth.currentUser.uid)
-  console.log("[v0] Saving profile for:", userId)
+  if (!userId) {
+    console.warn("No user ID provided")
+    return
+  }
 
   try {
     const profileRef = doc(db, "profiles", userId)
@@ -83,148 +80,68 @@ export async function saveUserProfile(userId: string, profileData: Partial<UserP
     if (profileSnap.exists()) {
       // Update existing profile
       await updateDoc(profileRef, dataToSave)
-      console.log("[v0] Profile updated successfully")
     } else {
       // Create new profile
       await setDoc(profileRef, {
         ...dataToSave,
         createdAt: serverTimestamp(),
       })
-      console.log("[v0] New profile created successfully")
     }
   } catch (error: any) {
-    console.log("[v0] Save error details:", {
-      code: error?.code,
-      message: error?.message,
-      authUser: auth?.currentUser?.uid,
-      targetUserId: userId,
-    })
-
-    if (error?.message?.includes("client is offline") || error?.code === "unavailable") {
-      console.log("[v0] Firebase is offline, profile changes saved locally only")
+    if (error?.code === "permission-denied") {
+      console.warn("Firestore permission denied - check security rules and authentication")
       return
     }
-
-    if (error?.message?.includes("Missing or insufficient permissions") || error?.code === "permission-denied") {
-      console.log("[v0] Firebase permissions error - database may need security rules configured")
-      throw new Error("FIREBASE_PERMISSIONS_ERROR")
-    }
-
     console.error("Error saving profile:", error)
     throw error
   }
 }
 
+// Get user profile by userId
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
-  if (!isFirebaseConfigured() || !db) {
-    console.log("[v0] Firebase not configured, returning null profile")
+  if (!isFirebaseConfigured()) {
+    console.warn("Firebase not configured, returning null profile")
     return null
   }
 
-  // Check if user is authenticated
-  if (!auth?.currentUser) {
-    console.log("[v0] No authenticated user, waiting for auth state...")
-    // Wait a bit for auth state to settle
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    if (!auth?.currentUser) {
-      console.log("[v0] Still no authenticated user after waiting")
-      throw new Error("FIREBASE_PERMISSIONS_ERROR")
-    }
+  if (!db) {
+    console.warn("Firestore database not initialized")
+    return null
   }
 
-  console.log("[v0] Authenticated user:", auth.currentUser.uid)
-  console.log("[v0] Requesting profile for:", userId)
+  if (!userId) {
+    console.warn("No user ID provided")
+    return null
+  }
 
   try {
     const profileRef = doc(db, "profiles", userId)
     const profileSnap = await getDoc(profileRef)
 
     if (profileSnap.exists()) {
-      console.log("[v0] Profile loaded successfully from Firestore")
       return { id: profileSnap.id, ...profileSnap.data() } as UserProfile
     }
 
-    console.log("[v0] No profile found in Firestore")
     return null
   } catch (error: any) {
-    console.log("[v0] Firestore error details:", {
-      code: error?.code,
-      message: error?.message,
-      authUser: auth?.currentUser?.uid,
-      requestedUserId: userId,
-    })
-
-    if (error?.message?.includes("client is offline") || error?.code === "unavailable") {
-      console.log("[v0] Firebase is offline, falling back to local profile")
+    if (error?.code === "permission-denied") {
+      console.warn("Firestore permission denied - check security rules and authentication")
       return null
     }
-
-    if (error?.message?.includes("Missing or insufficient permissions") || error?.code === "permission-denied") {
-      console.log("[v0] Firebase permissions error - database may need security rules configured")
-      throw new Error("FIREBASE_PERMISSIONS_ERROR")
-    }
-
     console.error("Error getting profile:", error)
-    throw error
-  }
-}
-
-// Get all public profiles (for browsing)
-export async function getPublicProfiles(maxResults = 20): Promise<UserProfile[]> {
-  if (!isFirebaseConfigured() || !db) {
-    console.warn("Firebase not configured, returning empty public profiles")
-    return []
-  }
-
-  try {
-    const profilesRef = collection(db, "profiles")
-
-    // Try the optimized query first (requires composite index)
-    try {
-      const q = query(profilesRef, where("isPublic", "==", true), orderBy("updatedAt", "desc"), limit(maxResults))
-      const querySnapshot = await getDocs(q)
-      const profiles: UserProfile[] = []
-
-      querySnapshot.forEach((doc) => {
-        profiles.push({ id: doc.id, ...doc.data() } as UserProfile)
-      })
-
-      return profiles
-    } catch (indexError: any) {
-      // If index error, fall back to simpler query
-      if (indexError?.message?.includes("requires an index")) {
-        console.warn("Composite index not available, using fallback query")
-
-        // Fallback: Just filter by isPublic without ordering
-        const fallbackQuery = query(profilesRef, where("isPublic", "==", true), limit(maxResults))
-        const querySnapshot = await getDocs(fallbackQuery)
-        const profiles: UserProfile[] = []
-
-        querySnapshot.forEach((doc) => {
-          profiles.push({ id: doc.id, ...doc.data() } as UserProfile)
-        })
-
-        // Sort in memory by updatedAt (less efficient but works without index)
-        profiles.sort((a, b) => {
-          const aTime = a.updatedAt?.toMillis?.() || 0
-          const bTime = b.updatedAt?.toMillis?.() || 0
-          return bTime - aTime
-        })
-
-        return profiles
-      }
-      throw indexError
-    }
-  } catch (error) {
-    console.error("Error getting public profiles:", error)
     throw error
   }
 }
 
 // Search profiles by keywords
 export async function searchProfiles(searchTerm: string, maxResults = 10): Promise<UserProfile[]> {
-  if (!isFirebaseConfigured() || !db) {
+  if (!isFirebaseConfigured()) {
     console.warn("Firebase not configured, returning empty search results")
+    return []
+  }
+
+  if (!db) {
+    console.warn("Firestore database not initialized")
     return []
   }
 
@@ -239,59 +156,63 @@ export async function searchProfiles(searchTerm: string, maxResults = 10): Promi
     }
 
     const profilesRef = collection(db, "profiles")
+    const q = query(
+      profilesRef,
+      where("isPublic", "==", true),
+      where("searchKeywords", "array-contains-any", searchKeywords),
+      orderBy("updatedAt", "desc"),
+      limit(maxResults),
+    )
 
-    try {
-      // Try the optimized query first (requires composite index)
-      const q = query(
-        profilesRef,
-        where("isPublic", "==", true),
-        where("searchKeywords", "array-contains-any", searchKeywords),
-        orderBy("updatedAt", "desc"),
-        limit(maxResults),
-      )
+    const querySnapshot = await getDocs(q)
+    const profiles: UserProfile[] = []
 
-      const querySnapshot = await getDocs(q)
-      const profiles: UserProfile[] = []
+    querySnapshot.forEach((doc) => {
+      profiles.push({ id: doc.id, ...doc.data() } as UserProfile)
+    })
 
-      querySnapshot.forEach((doc) => {
-        profiles.push({ id: doc.id, ...doc.data() } as UserProfile)
-      })
-
-      return profiles
-    } catch (indexError: any) {
-      // If index error, fall back to simpler query
-      if (indexError?.message?.includes("requires an index")) {
-        console.warn("Search composite index not available, using fallback query")
-
-        // Fallback: Just filter by isPublic and keywords without ordering
-        const fallbackQuery = query(
-          profilesRef,
-          where("isPublic", "==", true),
-          where("searchKeywords", "array-contains-any", searchKeywords),
-          limit(maxResults),
-        )
-
-        const querySnapshot = await getDocs(fallbackQuery)
-        const profiles: UserProfile[] = []
-
-        querySnapshot.forEach((doc) => {
-          profiles.push({ id: doc.id, ...doc.data() } as UserProfile)
-        })
-
-        // Sort in memory by updatedAt
-        profiles.sort((a, b) => {
-          const aTime = a.updatedAt?.toMillis?.() || 0
-          const bTime = b.updatedAt?.toMillis?.() || 0
-          return bTime - aTime
-        })
-
-        return profiles
-      }
-      throw indexError
+    return profiles
+  } catch (error: any) {
+    if (error?.code === "permission-denied") {
+      console.warn("Firestore permission denied for search - check security rules")
+      return []
     }
-  } catch (error) {
     console.error("Error searching profiles:", error)
-    throw error
+    return []
+  }
+}
+
+// Get all public profiles (for browsing)
+export async function getPublicProfiles(maxResults = 20): Promise<UserProfile[]> {
+  if (!isFirebaseConfigured()) {
+    console.warn("Firebase not configured, returning empty public profiles")
+    return []
+  }
+
+  if (!db) {
+    console.warn("Firestore database not initialized")
+    return []
+  }
+
+  try {
+    const profilesRef = collection(db, "profiles")
+    const q = query(profilesRef, where("isPublic", "==", true), orderBy("updatedAt", "desc"), limit(maxResults))
+
+    const querySnapshot = await getDocs(q)
+    const profiles: UserProfile[] = []
+
+    querySnapshot.forEach((doc) => {
+      profiles.push({ id: doc.id, ...doc.data() } as UserProfile)
+    })
+
+    return profiles
+  } catch (error: any) {
+    if (error?.code === "permission-denied") {
+      console.warn("Firestore permission denied for public profiles - check security rules")
+      return []
+    }
+    console.error("Error getting public profiles:", error)
+    return []
   }
 }
 
@@ -347,8 +268,18 @@ function generateSearchKeywords(profileName: string, profileDescription: string)
 
 // Delete user profile
 export async function deleteUserProfile(userId: string): Promise<void> {
-  if (!isFirebaseConfigured() || !db) {
+  if (!isFirebaseConfigured()) {
     console.warn("Firebase not configured, skipping profile deletion")
+    return
+  }
+
+  if (!db) {
+    console.warn("Firestore database not initialized")
+    return
+  }
+
+  if (!userId) {
+    console.warn("No user ID provided")
     return
   }
 
@@ -358,7 +289,11 @@ export async function deleteUserProfile(userId: string): Promise<void> {
       isPublic: false,
       updatedAt: serverTimestamp(),
     })
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === "permission-denied") {
+      console.warn("Firestore permission denied for profile deletion - check security rules")
+      return
+    }
     console.error("Error deleting profile:", error)
     throw error
   }

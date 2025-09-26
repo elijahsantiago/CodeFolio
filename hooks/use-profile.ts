@@ -3,39 +3,20 @@
 import { useState, useEffect } from "react"
 import { useAuth } from "./use-auth"
 import { getUserProfile, saveUserProfile, type UserProfile } from "@/lib/firestore"
-import { isFirebaseConfigured } from "@/lib/firebase"
-
-const PROFILE_STORAGE_KEY = "userProfile"
-
-function saveProfileToLocalStorage(userId: string, profile: UserProfile) {
-  try {
-    const profiles = JSON.parse(localStorage.getItem(PROFILE_STORAGE_KEY) || "{}")
-    profiles[userId] = profile
-    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profiles))
-    console.log("[v0] Profile saved to local storage")
-  } catch (error) {
-    console.error("Error saving profile to local storage:", error)
-  }
-}
-
-function getProfileFromLocalStorage(userId: string): UserProfile | null {
-  try {
-    const profiles = JSON.parse(localStorage.getItem(PROFILE_STORAGE_KEY) || "{}")
-    return profiles[userId] || null
-  } catch (error) {
-    console.error("Error loading profile from local storage:", error)
-    return null
-  }
-}
 
 export function useProfile() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
+  // Load user profile when user changes
   useEffect(() => {
     async function loadProfile() {
+      if (authLoading) {
+        return
+      }
+
       if (!user) {
         setProfile(null)
         setLoading(false)
@@ -46,166 +27,123 @@ export function useProfile() {
         setLoading(true)
         console.log("[v0] Loading profile for user:", user.uid)
 
-        if (isFirebaseConfigured()) {
-          try {
-            const userProfile = await getUserProfile(user.uid)
+        const userProfile = await getUserProfile(user.uid)
 
-            if (userProfile) {
-              console.log("[v0] Profile loaded successfully from Firebase")
-              saveProfileToLocalStorage(user.uid, userProfile)
-              setProfile(userProfile)
-              setLoading(false)
-              return
-            } else {
-              console.log("[v0] No profile found in Firebase")
-              // Check if we have a local profile to sync
-              const localProfile = getProfileFromLocalStorage(user.uid)
-              if (localProfile) {
-                console.log("[v0] Found local profile, syncing to Firebase")
-                try {
-                  await saveUserProfile(user.uid, localProfile)
-                  console.log("[v0] Local profile synced to Firebase")
-                  setProfile(localProfile)
-                  setLoading(false)
-                  return
-                } catch (syncError: any) {
-                  if (syncError.message === "FIREBASE_PERMISSIONS_ERROR") {
-                    console.log("[v0] Firebase permissions not configured, using local profile")
-                    setProfile(localProfile)
-                    setLoading(false)
-                    return
-                  }
-                  throw syncError
-                }
-              }
+        if (userProfile) {
+          console.log("[v0] Profile loaded successfully")
+          setProfile(userProfile)
+        } else {
+          console.log("[v0] No profile found, creating default profile")
+          // Create default profile for new user
+          const defaultProfile: Partial<UserProfile> = {
+            userId: user.uid,
+            email: user.email || "",
+            profileName: "Professional",
+            profileDescription:
+              "Welcome to my profile! I'm passionate about creating and sharing content with the community.",
+            profilePicture: "/professional-profile-avatar.png",
+            layout: "grid",
+            backgroundColor: "#ffffff",
+            backgroundImage: "",
+            contentBoxColor: "#ffffff",
+            contentBoxTrimColor: "#6b7280",
+            theme: "light-business",
+            showcaseItems: [
+              {
+                id: "1",
+                type: "image",
+                content: "/creative-workspace-setup.jpg",
+                title: "My Workspace",
+                description: "A look at my creative workspace",
+              },
+              {
+                id: "2",
+                type: "text",
+                content: "Welcome to my profile! I'm passionate about creating and sharing content with the community.",
+                title: "About Me",
+                description: "",
+              },
+              {
+                id: "3",
+                type: "video",
+                content: "/video-thumbnail.png",
+                title: "Latest Project",
+                description: "My recent work and highlights",
+              },
+              {
+                id: "4",
+                type: "image",
+                content: "/creative-workspace-setup.jpg",
+                title: "Featured Work",
+                description: "One of my favorite projects",
+              },
+              {
+                id: "5",
+                type: "text",
+                content:
+                  "I specialize in creating innovative solutions and bringing creative ideas to life through technology.",
+                title: "Skills & Expertise",
+                description: "",
+              },
+              {
+                id: "6",
+                type: "image",
+                content: "/creative-workspace-setup.jpg",
+                title: "Recent Achievement",
+                description: "A milestone I'm proud of",
+              },
+              {
+                id: "7",
+                type: "text",
+                content: "Always learning and exploring new technologies to stay at the forefront of innovation.",
+                title: "Continuous Learning",
+                description: "",
+              },
+              {
+                id: "8",
+                type: "image",
+                content: "/creative-workspace-setup.jpg",
+                title: "Portfolio Highlight",
+                description: "Another project I'm proud to showcase",
+              },
+            ],
+            resumeFile: "",
+            isPublic: true,
+          }
 
-              // No profile exists anywhere - this is a new user who needs setup
-              console.log("[v0] New user detected - profile setup required")
-              setProfile(null)
-              setLoading(false)
-              return
-            }
-          } catch (error: any) {
-            if (error.message === "FIREBASE_PERMISSIONS_ERROR") {
-              console.log("[v0] Firebase permissions not configured, falling back to local storage")
-              const localProfile = getProfileFromLocalStorage(user.uid)
-              if (localProfile) {
-                console.log("[v0] Using local profile")
-                setProfile(localProfile)
-                setLoading(false)
-                return
-              }
-            } else {
-              throw error
-            }
+          await saveUserProfile(user.uid, defaultProfile)
+          const newProfile = await getUserProfile(user.uid)
+          if (newProfile) {
+            console.log("[v0] Default profile created successfully")
+            setProfile(newProfile)
           }
         }
-
-        console.log("[v0] Checking local storage for existing profile")
-        const localProfile = getProfileFromLocalStorage(user.uid)
-        if (localProfile) {
-          console.log("[v0] Profile loaded from local storage")
-          setProfile(localProfile)
-          setLoading(false)
-          return
-        }
-
-        console.log("[v0] No existing profile found - new user setup required")
-        setProfile(null)
-        setLoading(false)
-      } catch (error: any) {
+      } catch (error) {
         console.error("Error loading profile:", error)
-        console.log("[v0] Profile loading failed, checking local storage")
-
-        const localProfile = getProfileFromLocalStorage(user.uid)
-        if (localProfile) {
-          console.log("[v0] Using local profile as fallback")
-          setProfile(localProfile)
-        } else {
-          console.log("[v0] No profile available - setup required")
-          setProfile(null)
-        }
+        setProfile(null)
+      } finally {
         setLoading(false)
       }
     }
 
     loadProfile()
-  }, [user])
+  }, [user, authLoading])
 
   // Save profile changes
   const updateProfile = async (updates: Partial<UserProfile>) => {
-    if (!user) return
+    if (!user || !profile) return
 
     try {
       setSaving(true)
       console.log("[v0] Updating profile with:", updates)
 
-      if (!profile) {
-        const newProfile: UserProfile = {
-          id: user.uid,
-          userId: user.uid,
-          email: user.email || "",
-          profileName: updates.profileName || "Professional",
-          profileDescription: updates.profileDescription || "Welcome to my profile!",
-          profilePicture: updates.profilePicture || "/professional-profile-avatar.png",
-          layout: "grid",
-          backgroundColor: "#ffffff",
-          backgroundImage: "",
-          contentBoxColor: "#ffffff",
-          contentBoxTrimColor: "#6b7280",
-          theme: "light-business",
-          showcaseItems: [
-            {
-              id: "1",
-              type: "text",
-              content:
-                updates.profileDescription ||
-                "Welcome to my profile! I'm excited to share my work and connect with others.",
-              title: "About Me",
-              description: "",
-            },
-          ],
-          resumeFile: "",
-          isPublic: true,
-          createdAt: new Date() as any,
-          updatedAt: new Date() as any,
-          searchKeywords: [],
-          ...updates,
-        }
+      await saveUserProfile(user.uid, updates)
 
-        setProfile(newProfile)
-        saveProfileToLocalStorage(user.uid, newProfile)
-
-        // Try to save to Firebase
-        if (isFirebaseConfigured()) {
-          try {
-            await saveUserProfile(user.uid, newProfile)
-            console.log("[v0] New profile saved to Firebase")
-          } catch (error: any) {
-            if (error.message !== "FIREBASE_PERMISSIONS_ERROR") {
-              console.error("Error saving new profile to Firebase:", error)
-            }
-            console.log("[v0] New profile saved locally")
-          }
-        }
-        return
-      }
-
-      // Update existing profile
-      const updatedProfile = { ...profile, ...updates }
-      setProfile(updatedProfile)
-      saveProfileToLocalStorage(user.uid, updatedProfile)
-
-      // Try to save to Firebase if configured
-      if (isFirebaseConfigured()) {
-        await saveUserProfile(user.uid, updates)
-        console.log("[v0] Profile saved to Firebase")
-      } else {
-        console.log("[v0] Firebase not configured, profile updated locally only")
-      }
+      // Update local state
+      setProfile((prev) => (prev ? { ...prev, ...updates } : null))
+      console.log("[v0] Profile updated successfully")
     } catch (error) {
       console.error("Error updating profile:", error)
-      console.log("[v0] Profile update failed, but local changes preserved")
     } finally {
       setSaving(false)
     }
