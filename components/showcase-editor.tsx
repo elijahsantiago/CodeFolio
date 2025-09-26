@@ -945,16 +945,11 @@ export function ShowcaseEditor({
                               : "md:col-span-2 lg:col-span-3"
                             : ""
                         }`}
-                        style={{ touchAction: "none" }}
                       >
                         <CardHeader className="pb-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <div
-                                {...provided.dragHandleProps}
-                                className="cursor-grab active:cursor-grabbing"
-                                style={{ touchAction: "none" }}
-                              >
+                              <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
                                 <GripVertical className="h-4 w-4 text-muted-foreground" />
                               </div>
                               {item.size === "long" && (

@@ -195,25 +195,20 @@
 
 /* Added drag and drop touch support styles */
 /* Drag and drop touch support for mobile and v0 environment compatibility */
-[data-rbd-draggable-context-id] {
-  touch-action: none !important;
-}
-
+/* Removed aggressive touch-action styles that were breaking drag and drop */
+/* Simplified drag and drop support for better compatibility */
 [data-rbd-drag-handle-context-id] {
-  touch-action: none !important;
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
 }
 
 /* Ensure draggable elements work on touch devices */
 .cursor-grab {
-  touch-action: none;
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
 }
 
 .cursor-grabbing {
-  touch-action: none;
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
 }
