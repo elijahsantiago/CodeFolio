@@ -84,6 +84,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (user && !profileLoading && !profile) {
+      console.log("[v0] Setting showProfileSetup to true for new user")
       setShowProfileSetup(true)
     }
   }, [user, profile, profileLoading])
@@ -157,17 +158,6 @@ export default function HomePage() {
     )
   }
 
-  if (!profile) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Setting up your profile...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-8">
@@ -194,63 +184,75 @@ export default function HomePage() {
           <ProfileSearch />
         ) : (
           <>
-            <div className="fixed top-4 right-4 z-50">
-              <Button
-                onClick={() => setIsEditing(!isEditing)}
-                variant={isEditing ? "secondary" : "default"}
-                size="sm"
-                className="gap-2 shadow-lg bg-background/80 backdrop-blur-sm border border-border hover:bg-primary hover:text-primary-foreground transition-all duration-300"
-              >
-                {isEditing ? (
-                  <>
-                    <Eye className="h-4 w-4" />
-                    Preview
-                  </>
-                ) : (
-                  <Edit className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
+            {profile ? (
+              <>
+                <div className="fixed top-4 right-4 z-50">
+                  <Button
+                    onClick={() => setIsEditing(!isEditing)}
+                    variant={isEditing ? "secondary" : "default"}
+                    size="sm"
+                    className="gap-2 shadow-lg bg-background/80 backdrop-blur-sm border border-border hover:bg-primary hover:text-primary-foreground transition-all duration-300"
+                  >
+                    {isEditing ? (
+                      <>
+                        <Eye className="h-4 w-4" />
+                        Preview
+                      </>
+                    ) : (
+                      <Edit className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
 
-            {isEditing ? (
-              <ShowcaseEditor
-                items={profile.showcaseItems}
-                onItemsChange={(items) => handleProfileUpdate({ showcaseItems: items })}
-                profilePicture={profile.profilePicture}
-                profileName={profile.profileName}
-                profileDescription={profile.profileDescription}
-                onProfileChange={(data) => handleProfileUpdate(data)}
-                layout={profile.layout}
-                onLayoutChange={(layout) => handleProfileUpdate({ layout })}
-                backgroundColor={profile.backgroundColor}
-                onBackgroundColorChange={(color) => handleProfileUpdate({ backgroundColor: color })}
-                backgroundImage={profile.backgroundImage}
-                onBackgroundImageChange={(image) => handleProfileUpdate({ backgroundImage: image })}
-                contentBoxColor={profile.contentBoxColor}
-                onContentBoxColorChange={(color) => handleProfileUpdate({ contentBoxColor: color })}
-                contentBoxTrimColor={profile.contentBoxTrimColor}
-                onContentBoxTrimColorChange={(color) => handleProfileUpdate({ contentBoxTrimColor: color })}
-                friends={friends}
-                onFriendsChange={setFriends}
-                theme={profile.theme}
-                onThemeChange={(theme) => handleProfileUpdate({ theme })}
-                resumeFile={profile.resumeFile}
-                onResumeFileChange={(file) => handleProfileUpdate({ resumeFile: file })}
-              />
+                {isEditing ? (
+                  <ShowcaseEditor
+                    items={profile.showcaseItems}
+                    onItemsChange={(items) => handleProfileUpdate({ showcaseItems: items })}
+                    profilePicture={profile.profilePicture}
+                    profileName={profile.profileName}
+                    profileDescription={profile.profileDescription}
+                    onProfileChange={(data) => handleProfileUpdate(data)}
+                    layout={profile.layout}
+                    onLayoutChange={(layout) => handleProfileUpdate({ layout })}
+                    backgroundColor={profile.backgroundColor}
+                    onBackgroundColorChange={(color) => handleProfileUpdate({ backgroundColor: color })}
+                    backgroundImage={profile.backgroundImage}
+                    onBackgroundImageChange={(image) => handleProfileUpdate({ backgroundImage: image })}
+                    contentBoxColor={profile.contentBoxColor}
+                    onContentBoxColorChange={(color) => handleProfileUpdate({ contentBoxColor: color })}
+                    contentBoxTrimColor={profile.contentBoxTrimColor}
+                    onContentBoxTrimColorChange={(color) => handleProfileUpdate({ contentBoxTrimColor: color })}
+                    friends={friends}
+                    onFriendsChange={setFriends}
+                    theme={profile.theme}
+                    onThemeChange={(theme) => handleProfileUpdate({ theme })}
+                    resumeFile={profile.resumeFile}
+                    onResumeFileChange={(file) => handleProfileUpdate({ resumeFile: file })}
+                  />
+                ) : (
+                  <ProfileShowcase
+                    items={profile.showcaseItems}
+                    profilePicture={profile.profilePicture}
+                    profileName={profile.profileName}
+                    profileDescription={profile.profileDescription}
+                    layout={profile.layout}
+                    backgroundColor={profile.backgroundColor}
+                    backgroundImage={profile.backgroundImage}
+                    contentBoxColor={profile.contentBoxColor}
+                    contentBoxTrimColor={profile.contentBoxTrimColor}
+                    friends={friends}
+                    resumeFile={profile.resumeFile}
+                  />
+                )}
+              </>
             ) : (
-              <ProfileShowcase
-                items={profile.showcaseItems}
-                profilePicture={profile.profilePicture}
-                profileName={profile.profileName}
-                profileDescription={profile.profileDescription}
-                layout={profile.layout}
-                backgroundColor={profile.backgroundColor}
-                backgroundImage={profile.backgroundImage}
-                contentBoxColor={profile.contentBoxColor}
-                contentBoxTrimColor={profile.contentBoxTrimColor}
-                friends={friends}
-                resumeFile={profile.resumeFile}
-              />
+              <div className="min-h-[60vh] flex items-center justify-center">
+                <div className="text-center space-y-4">
+                  <h2 className="text-2xl font-bold">Welcome to CodeFolio!</h2>
+                  <p className="text-muted-foreground">Let's set up your profile to get started.</p>
+                  <Button onClick={() => setShowProfileSetup(true)}>Set Up Profile</Button>
+                </div>
+              </div>
             )}
           </>
         )}

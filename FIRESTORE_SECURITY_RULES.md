@@ -26,6 +26,32 @@ service cloud.firestore {
 }
 \`\`\`
 
+## Optional: Composite Indexes for Better Performance
+
+For optimal performance of the profile search and browsing features, you can create composite indexes. The app will work without these indexes using fallback queries, but performance will be better with them.
+
+### To create the indexes:
+
+1. Go to Firebase Console → Firestore Database → Indexes
+2. Click "Create Index" and add these two composite indexes:
+
+**Index 1 - For Public Profile Browsing:**
+- Collection ID: `profiles`
+- Fields:
+  - `isPublic` (Ascending)
+  - `updatedAt` (Descending)
+
+**Index 2 - For Profile Search:**
+- Collection ID: `profiles`  
+- Fields:
+  - `isPublic` (Ascending)
+  - `searchKeywords` (Arrays)
+  - `updatedAt` (Descending)
+
+### Alternative: Auto-create indexes from error links
+
+When you see index errors in the console, Firebase provides direct links to create the required indexes. You can click these links to automatically create the indexes.
+
 ## What these rules do:
 
 - **Line 4-6**: Allow authenticated users to read and write only their own profile document (where the document ID matches their user ID)
@@ -51,6 +77,7 @@ If you're still getting permission errors after adding the rules:
 - ✅ Database structure is correct
 - ✅ Profile data exists in Firebase  
 - ✅ Enhanced debugging added to identify permission issues
+- ✅ Fallback queries implemented for missing indexes
 - ❌ Security rules need to be configured (this is the missing piece)
 
-Once you add these security rules, the app will work seamlessly with your Firebase database!
+Once you add these security rules, the app will work seamlessly with your Firebase database! The composite indexes are optional but recommended for better performance.

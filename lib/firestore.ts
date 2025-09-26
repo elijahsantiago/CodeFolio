@@ -169,6 +169,58 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   }
 }
 
+// Get all public profiles (for browsing)
+export async function getPublicProfiles(maxResults = 20): Promise<UserProfile[]> {
+  if (!isFirebaseConfigured() || !db) {
+    console.warn("Firebase not configured, returning empty public profiles")
+    return []
+  }
+
+  try {
+    const profilesRef = collection(db, "profiles")
+
+    // Try the optimized query first (requires composite index)
+    try {
+      const q = query(profilesRef, where("isPublic", "==", true), orderBy("updatedAt", "desc"), limit(maxResults))
+      const querySnapshot = await getDocs(q)
+      const profiles: UserProfile[] = []
+
+      querySnapshot.forEach((doc) => {
+        profiles.push({ id: doc.id, ...doc.data() } as UserProfile)
+      })
+
+      return profiles
+    } catch (indexError: any) {
+      // If index error, fall back to simpler query
+      if (indexError?.message?.includes("requires an index")) {
+        console.warn("Composite index not available, using fallback query")
+
+        // Fallback: Just filter by isPublic without ordering
+        const fallbackQuery = query(profilesRef, where("isPublic", "==", true), limit(maxResults))
+        const querySnapshot = await getDocs(fallbackQuery)
+        const profiles: UserProfile[] = []
+
+        querySnapshot.forEach((doc) => {
+          profiles.push({ id: doc.id, ...doc.data() } as UserProfile)
+        })
+
+        // Sort in memory by updatedAt (less efficient but works without index)
+        profiles.sort((a, b) => {
+          const aTime = a.updatedAt?.toMillis?.() || 0
+          const bTime = b.updatedAt?.toMillis?.() || 0
+          return bTime - aTime
+        })
+
+        return profiles
+      }
+      throw indexError
+    }
+  } catch (error) {
+    console.error("Error getting public profiles:", error)
+    throw error
+  }
+}
+
 // Search profiles by keywords
 export async function searchProfiles(searchTerm: string, maxResults = 10): Promise<UserProfile[]> {
   if (!isFirebaseConfigured() || !db) {
@@ -187,49 +239,58 @@ export async function searchProfiles(searchTerm: string, maxResults = 10): Promi
     }
 
     const profilesRef = collection(db, "profiles")
-    const q = query(
-      profilesRef,
-      where("isPublic", "==", true),
-      where("searchKeywords", "array-contains-any", searchKeywords),
-      orderBy("updatedAt", "desc"),
-      limit(maxResults),
-    )
 
-    const querySnapshot = await getDocs(q)
-    const profiles: UserProfile[] = []
+    try {
+      // Try the optimized query first (requires composite index)
+      const q = query(
+        profilesRef,
+        where("isPublic", "==", true),
+        where("searchKeywords", "array-contains-any", searchKeywords),
+        orderBy("updatedAt", "desc"),
+        limit(maxResults),
+      )
 
-    querySnapshot.forEach((doc) => {
-      profiles.push({ id: doc.id, ...doc.data() } as UserProfile)
-    })
+      const querySnapshot = await getDocs(q)
+      const profiles: UserProfile[] = []
 
-    return profiles
+      querySnapshot.forEach((doc) => {
+        profiles.push({ id: doc.id, ...doc.data() } as UserProfile)
+      })
+
+      return profiles
+    } catch (indexError: any) {
+      // If index error, fall back to simpler query
+      if (indexError?.message?.includes("requires an index")) {
+        console.warn("Search composite index not available, using fallback query")
+
+        // Fallback: Just filter by isPublic and keywords without ordering
+        const fallbackQuery = query(
+          profilesRef,
+          where("isPublic", "==", true),
+          where("searchKeywords", "array-contains-any", searchKeywords),
+          limit(maxResults),
+        )
+
+        const querySnapshot = await getDocs(fallbackQuery)
+        const profiles: UserProfile[] = []
+
+        querySnapshot.forEach((doc) => {
+          profiles.push({ id: doc.id, ...doc.data() } as UserProfile)
+        })
+
+        // Sort in memory by updatedAt
+        profiles.sort((a, b) => {
+          const aTime = a.updatedAt?.toMillis?.() || 0
+          const bTime = b.updatedAt?.toMillis?.() || 0
+          return bTime - aTime
+        })
+
+        return profiles
+      }
+      throw indexError
+    }
   } catch (error) {
     console.error("Error searching profiles:", error)
-    throw error
-  }
-}
-
-// Get all public profiles (for browsing)
-export async function getPublicProfiles(maxResults = 20): Promise<UserProfile[]> {
-  if (!isFirebaseConfigured() || !db) {
-    console.warn("Firebase not configured, returning empty public profiles")
-    return []
-  }
-
-  try {
-    const profilesRef = collection(db, "profiles")
-    const q = query(profilesRef, where("isPublic", "==", true), orderBy("updatedAt", "desc"), limit(maxResults))
-
-    const querySnapshot = await getDocs(q)
-    const profiles: UserProfile[] = []
-
-    querySnapshot.forEach((doc) => {
-      profiles.push({ id: doc.id, ...doc.data() } as UserProfile)
-    })
-
-    return profiles
-  } catch (error) {
-    console.error("Error getting public profiles:", error)
     throw error
   }
 }

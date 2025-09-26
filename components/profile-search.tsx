@@ -39,8 +39,13 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
       try {
         const profiles = await getPublicProfiles(12)
         setPublicProfiles(profiles)
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error loading public profiles:", error)
+
+        // Show user-friendly message for index errors
+        if (error?.message?.includes("requires an index")) {
+          console.warn("Firestore composite index required for optimal performance. Using fallback query.")
+        }
       }
     }
 
@@ -59,8 +64,13 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
     try {
       const results = await searchProfiles(searchTerm)
       setSearchResults(results)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error searching profiles:", error)
+
+      // Show user-friendly message for index errors
+      if (error?.message?.includes("requires an index")) {
+        console.warn("Firestore composite index required for optimal search performance.")
+      }
     } finally {
       setLoading(false)
     }
