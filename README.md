@@ -26,6 +26,6 @@ Built with **Firebase** as the backend, CodeFolio ensures seamless authenticatio
 
 ## 🛠️ Tech Stack  
 
-- **Frontend:** Next.js / React  
+- **Frontend:** Next.js / React / Tailwind
 - **Backend:** Firebase (Auth, Firestore, Storage)  
 - **Deployment:** Vercel  
