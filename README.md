@@ -1,10 +1,28 @@
-/
-/
-/ / /$$$$$$$$ /$$$$$$$$ /$$$$$$ /$$ /$$$$$$ /$$$$$$ /$$__ $$ /$$__ $$| $$__ $$| $$_____/| $$_____//$$__ $$| $$ |_ $$_/ /$$__ $$ | $$ \__/| $$ \ $$| $$ \ $$| $$ | $$ | $$ \ $$| $$ | $$ | $$ \ $$ | $$ | $$ | $$| $$ | $$| $$$$$ | $$$$$ | $$ | $$| $$ | $$ | $$ | $$ | $$ | $$ | $$| $$ | $$| $$__/ | $$__/ | $$ | $$| $$ | $$ | $$ | $$ | $$ $$| $$ | $$| $$ | $$| $$ | $$ | $$ | $$| $$ | $$ | $$ | $$ | $$$$$$/| $$$$$$/|/| | $$ | $$$$$$/| /
-∣
-∣/
-_/ _/ |/ |__/|/ _/ |/|____/ __/
-
+                                                                                                                                                 
+                                                  dddddddd                                                                                       
+        CCCCCCCCCCCCC                             d::::::d                  FFFFFFFFFFFFFFFFFFFFFF              lllllll   iiii                   
+     CCC::::::::::::C                             d::::::d                  F::::::::::::::::::::F              l:::::l  i::::i                  
+   CC:::::::::::::::C                             d::::::d                  F::::::::::::::::::::F              l:::::l   iiii                   
+  C:::::CCCCCCCC::::C                             d:::::d                   FF::::::FFFFFFFFF::::F              l:::::l                          
+ C:::::C       CCCCCC   ooooooooooo       ddddddddd:::::d     eeeeeeeeeeee    F:::::F       FFFFFFooooooooooo    l::::l iiiiiii    ooooooooooo   
+C:::::C               oo:::::::::::oo   dd::::::::::::::d   ee::::::::::::ee  F:::::F           oo:::::::::::oo  l::::l i:::::i  oo:::::::::::oo 
+C:::::C              o:::::::::::::::o d::::::::::::::::d  e::::::eeeee:::::eeF::::::FFFFFFFFFFo:::::::::::::::o l::::l  i::::i o:::::::::::::::o
+C:::::C              o:::::ooooo:::::od:::::::ddddd:::::d e::::::e     e:::::eF:::::::::::::::Fo:::::ooooo:::::o l::::l  i::::i o:::::ooooo:::::o
+C:::::C              o::::o     o::::od::::::d    d:::::d e:::::::eeeee::::::eF:::::::::::::::Fo::::o     o::::o l::::l  i::::i o::::o     o::::o
+C:::::C              o::::o     o::::od:::::d     d:::::d e:::::::::::::::::e F::::::FFFFFFFFFFo::::o     o::::o l::::l  i::::i o::::o     o::::o
+C:::::C              o::::o     o::::od:::::d     d:::::d e::::::eeeeeeeeeee  F:::::F          o::::o     o::::o l::::l  i::::i o::::o     o::::o
+ C:::::C       CCCCCCo::::o     o::::od:::::d     d:::::d e:::::::e           F:::::F          o::::o     o::::o l::::l  i::::i o::::o     o::::o
+  C:::::CCCCCCCC::::Co:::::ooooo:::::od::::::ddddd::::::dde::::::::e        FF:::::::FF        o:::::ooooo:::::ol::::::li::::::io:::::ooooo:::::o
+   CC:::::::::::::::Co:::::::::::::::o d:::::::::::::::::d e::::::::eeeeeeeeF::::::::FF        o:::::::::::::::ol::::::li::::::io:::::::::::::::o
+     CCC::::::::::::C oo:::::::::::oo   d:::::::::ddd::::d  ee:::::::::::::eF::::::::FF         oo:::::::::::oo l::::::li::::::i oo:::::::::::oo 
+        CCCCCCCCCCCCC   ooooooooooo      ddddddddd   ddddd    eeeeeeeeeeeeeeFFFFFFFFFFF           ooooooooooo   lllllllliiiiiiii   ooooooooooo   
+                                                                                                                                                 
+                                                                                                                                                 
+                                                                                                                                                 
+                                                                                                                                                 
+                                                                                                                                                 
+                                                                                                                                                 
+                                                                                                                                                 
 ## 🚀 About CodeFolio  
 
 **CodeFolio** is a modern portFolio creation and sharing platform designed for developers, designers, and professionals to showcase their skills, projects, and resumes.  
