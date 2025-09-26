@@ -14,9 +14,16 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Plus, GripVertical, Edit, Trash2, ImageIcon, Play, Upload, Type, AlertCircle } from "lucide-react"
 import { processImageUpload } from "@/lib/image-utils"
 
-const DragDropContext = dynamic(() => import("@hello-pangea/dnd").then((mod) => mod.DragDropContext), { ssr: false })
-const Droppable = dynamic(() => import("@hello-pangea/dnd").then((mod) => mod.Droppable), { ssr: false })
-const Draggable = dynamic(() => import("@hello-pangea/dnd").then((mod) => mod.Draggable), { ssr: false })
+const DragDropContext = dynamic(() => import("@hello-pangea/dnd").then((mod) => mod.DragDropContext), {
+  ssr: false,
+  loading: () => <div>Loading drag and drop...</div>,
+})
+const Droppable = dynamic(() => import("@hello-pangea/dnd").then((mod) => mod.Droppable), {
+  ssr: false,
+})
+const Draggable = dynamic(() => import("@hello-pangea/dnd").then((mod) => mod.Draggable), {
+  ssr: false,
+})
 
 // Import the type separately since it's just for TypeScript
 import type { DropResult } from "@hello-pangea/dnd"
@@ -103,19 +110,13 @@ export function ShowcaseEditor({
   const [savedPresets, setSavedPresets] = useState<any[]>([])
 
   const [isMounted, setIsMounted] = useState(false)
-  const [dragEnabled, setDragEnabled] = useState(false)
 
   useEffect(() => {
     setIsMounted(true)
-    const timer = setTimeout(() => {
-      setDragEnabled(true)
-      console.log("[v0] Drag and drop initialized for cross-environment compatibility")
-    }, 100)
+    console.log("[v0] Component mounted, drag and drop ready")
 
     const presets = JSON.parse(localStorage.getItem("profilePresets") || "[]")
     setSavedPresets(presets)
-
-    return () => clearTimeout(timer)
   }, [])
 
   const handleLoadPreset = (preset: any) => {
@@ -929,69 +930,70 @@ export function ShowcaseEditor({
         </div>
       </div>
 
-      {isMounted && dragEnabled ? (
+      {isMounted ? (
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="showcase-items">
             {(provided) => (
               <div
-                {...provided.droppableProps}
                 ref={provided.innerRef}
+                {...provided.droppableProps}
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
               >
                 {items.map((item, index) => (
                   <Draggable key={item.id} draggableId={item.id} index={index}>
                     {(provided, snapshot) => (
-                      <Card
+                      <div
                         ref={provided.innerRef}
                         {...provided.draggableProps}
-                        className={`transition-shadow ${snapshot.isDragging ? "shadow-lg rotate-2" : "hover:shadow-md"} ${
-                          item.size === "long"
-                            ? layout === "grid"
-                              ? "md:col-span-2 lg:col-span-4"
-                              : "md:col-span-2 lg:col-span-3"
-                            : ""
-                        }`}
                         style={{
                           ...provided.draggableProps.style,
-                          touchAction: "manipulation",
                         }}
                       >
-                        <CardHeader className="pb-2">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div
-                                {...provided.dragHandleProps}
-                                className="cursor-grab active:cursor-grabbing"
-                                style={{ touchAction: "none" }}
-                              >
-                                <GripVertical className="h-4 w-4 text-muted-foreground" />
-                              </div>
-                              {item.size === "long" && (
-                                <Badge variant="outline" className="text-xs">
-                                  Long
+                        <Card
+                          className={`transition-shadow ${snapshot.isDragging ? "shadow-lg rotate-2" : "hover:shadow-md"} ${
+                            item.size === "long"
+                              ? layout === "grid"
+                                ? "md:col-span-2 lg:col-span-4"
+                                : "md:col-span-2 lg:col-span-3"
+                              : ""
+                          }`}
+                        >
+                          <CardHeader className="pb-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div
+                                  {...provided.dragHandleProps}
+                                  className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded"
+                                >
+                                  <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                                {item.size === "long" && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Long
+                                  </Badge>
+                                )}
+                                <Badge variant="secondary" className="gap-1">
+                                  {getTypeIcon(item.type)}
+                                  {item.type}
                                 </Badge>
-                              )}
-                              <Badge variant="secondary" className="gap-1">
-                                {getTypeIcon(item.type)}
-                                {item.type}
-                              </Badge>
+                              </div>
+                              <div className="flex gap-1">
+                                <Button size="sm" variant="ghost" onClick={() => openEditDialog(item)}>
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => handleDeleteItem(item.id)}>
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
                             </div>
-                            <div className="flex gap-1">
-                              <Button size="sm" variant="ghost" onClick={() => openEditDialog(item)}>
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={() => handleDeleteItem(item.id)}>
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                          <CardTitle className="text-sm">{item.title}</CardTitle>
-                          {item.description && (
-                            <CardDescription className="text-xs">{item.description}</CardDescription>
-                          )}
-                        </CardHeader>
-                        <CardContent className="pt-0">{renderContent(item)}</CardContent>
-                      </Card>
+                            <CardTitle className="text-sm">{item.title}</CardTitle>
+                            {item.description && (
+                              <CardDescription className="text-xs">{item.description}</CardDescription>
+                            )}
+                          </CardHeader>
+                          <CardContent className="pt-0">{renderContent(item)}</CardContent>
+                        </Card>
+                      </div>
                     )}
                   </Draggable>
                 ))}
