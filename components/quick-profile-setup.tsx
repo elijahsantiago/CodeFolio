@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Upload, User, FileText, Camera } from "lucide-react"
+import { Upload, User, FileText, Camera, AlertCircle } from "lucide-react"
+import { processImageUpload } from "@/lib/image-utils"
 
 interface QuickProfileSetupProps {
   onComplete: (data: {
@@ -23,16 +24,29 @@ export function QuickProfileSetup({ onComplete, onSkip }: QuickProfileSetupProps
   const [profileDescription, setProfileDescription] = useState("")
   const [profilePicture, setProfilePicture] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
-  const handleFileUpload = (file: File) => {
+  const handleFileUpload = async (file: File) => {
     setIsUploading(true)
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const result = e.target?.result as string
-      setProfilePicture(result)
+    setUploadError(null)
+
+    try {
+      // Process and compress the image
+      const compressedImage = await processImageUpload(file, {
+        maxWidth: 400,
+        maxHeight: 400,
+        quality: 0.8,
+        maxSizeKB: 200, // Smaller limit for profile pictures
+      })
+
+      setProfilePicture(compressedImage)
+      console.log("[v0] Profile picture processed successfully")
+    } catch (error: any) {
+      console.error("[v0] Error uploading profile picture:", error)
+      setUploadError(error.message || "Failed to process image")
+    } finally {
       setIsUploading(false)
     }
-    reader.readAsDataURL(file)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -116,15 +130,27 @@ export function QuickProfileSetup({ onComplete, onSkip }: QuickProfileSetupProps
               />
               <Button type="button" variant="outline" size="sm" disabled={isUploading}>
                 <Upload className="h-3 w-3 mr-1" />
-                {isUploading ? "Uploading..." : "Upload"}
+                {isUploading ? "Processing..." : "Upload"}
               </Button>
             </div>
-            {profilePicture && (
-              <div className="flex items-center gap-2 text-sm text-green-600">
-                <Camera className="h-4 w-4" />
-                Profile picture ready!
+
+            {uploadError && (
+              <div className="flex items-center gap-2 text-sm text-red-600">
+                <AlertCircle className="h-4 w-4" />
+                {uploadError}
               </div>
             )}
+
+            {profilePicture && !uploadError && (
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <Camera className="h-4 w-4" />
+                Profile picture ready! (Compressed for optimal performance)
+              </div>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              Images will be automatically compressed to ensure fast loading. Max file size: 10MB
+            </p>
           </div>
         </div>
 

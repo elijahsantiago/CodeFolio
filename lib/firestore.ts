@@ -47,21 +47,22 @@ export interface ShowcaseItem {
 // Create or update user profile
 export async function saveUserProfile(userId: string, profileData: Partial<UserProfile>): Promise<void> {
   if (!isFirebaseConfigured()) {
-    console.warn("Firebase not configured, skipping profile save")
+    console.warn("[v0] Firebase not configured, skipping profile save")
     return
   }
 
   if (!db) {
-    console.warn("Firestore database not initialized")
+    console.warn("[v0] Firestore database not initialized")
     return
   }
 
   if (!userId) {
-    console.warn("No user ID provided")
+    console.warn("[v0] No user ID provided")
     return
   }
 
   try {
+    console.log("[v0] Saving profile for user:", userId)
     const profileRef = doc(db, "profiles", userId)
 
     // Generate search keywords from profile name and description
@@ -79,20 +80,23 @@ export async function saveUserProfile(userId: string, profileData: Partial<UserP
 
     if (profileSnap.exists()) {
       // Update existing profile
+      console.log("[v0] Updating existing profile")
       await updateDoc(profileRef, dataToSave)
     } else {
       // Create new profile
+      console.log("[v0] Creating new profile")
       await setDoc(profileRef, {
         ...dataToSave,
         createdAt: serverTimestamp(),
       })
     }
+    console.log("[v0] Profile save completed successfully")
   } catch (error: any) {
+    console.error("[v0] Error saving profile:", error)
     if (error?.code === "permission-denied") {
-      console.warn("Firestore permission denied - check security rules and authentication")
-      return
+      console.error("[v0] Firestore permission denied - check security rules and authentication")
+      console.error("[v0] Make sure your Firestore rules allow authenticated users to write to profiles collection")
     }
-    console.error("Error saving profile:", error)
     throw error
   }
 }
@@ -100,35 +104,37 @@ export async function saveUserProfile(userId: string, profileData: Partial<UserP
 // Get user profile by userId
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
   if (!isFirebaseConfigured()) {
-    console.warn("Firebase not configured, returning null profile")
+    console.warn("[v0] Firebase not configured, returning null profile")
     return null
   }
 
   if (!db) {
-    console.warn("Firestore database not initialized")
+    console.warn("[v0] Firestore database not initialized")
     return null
   }
 
   if (!userId) {
-    console.warn("No user ID provided")
+    console.warn("[v0] No user ID provided")
     return null
   }
 
   try {
+    console.log("[v0] Fetching profile for user:", userId)
     const profileRef = doc(db, "profiles", userId)
     const profileSnap = await getDoc(profileRef)
 
     if (profileSnap.exists()) {
+      console.log("[v0] Profile found in database")
       return { id: profileSnap.id, ...profileSnap.data() } as UserProfile
     }
 
+    console.log("[v0] No profile found in database")
     return null
   } catch (error: any) {
+    console.error("[v0] Error getting profile:", error)
     if (error?.code === "permission-denied") {
-      console.warn("Firestore permission denied - check security rules and authentication")
-      return null
+      console.error("[v0] Firestore permission denied - check security rules and authentication")
     }
-    console.error("Error getting profile:", error)
     throw error
   }
 }

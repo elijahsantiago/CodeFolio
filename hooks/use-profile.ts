@@ -34,7 +34,6 @@ export function useProfile() {
           setProfile(userProfile)
         } else {
           console.log("[v0] No profile found, creating default profile")
-          // Create default profile for new user
           const defaultProfile: Partial<UserProfile> = {
             userId: user.uid,
             email: user.email || "",
@@ -111,11 +110,35 @@ export function useProfile() {
             isPublic: true,
           }
 
-          await saveUserProfile(user.uid, defaultProfile)
-          const newProfile = await getUserProfile(user.uid)
-          if (newProfile) {
-            console.log("[v0] Default profile created successfully")
-            setProfile(newProfile)
+          try {
+            console.log("[v0] Attempting to save default profile to Firestore...")
+            await saveUserProfile(user.uid, defaultProfile)
+            console.log("[v0] Default profile saved successfully")
+
+            // Verify the profile was saved by fetching it again
+            const newProfile = await getUserProfile(user.uid)
+            if (newProfile) {
+              console.log("[v0] Profile verified in database")
+              setProfile(newProfile)
+            } else {
+              console.warn("[v0] Profile save appeared successful but profile not found on re-fetch")
+              // Set the profile locally even if database save failed
+              setProfile({
+                id: user.uid,
+                ...defaultProfile,
+                createdAt: new Date() as any,
+                updatedAt: new Date() as any,
+              } as UserProfile)
+            }
+          } catch (saveError) {
+            console.error("[v0] Failed to save default profile to Firestore:", saveError)
+            // Still set the profile locally so the user can use the app
+            setProfile({
+              id: user.uid,
+              ...defaultProfile,
+              createdAt: new Date() as any,
+              updatedAt: new Date() as any,
+            } as UserProfile)
           }
         }
       } catch (error) {
@@ -144,6 +167,8 @@ export function useProfile() {
       console.log("[v0] Profile updated successfully")
     } catch (error) {
       console.error("Error updating profile:", error)
+      // Still update local state even if database save failed
+      setProfile((prev) => (prev ? { ...prev, ...updates } : null))
     } finally {
       setSaving(false)
     }

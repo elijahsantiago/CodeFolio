@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Plus, GripVertical, Edit, Trash2, ImageIcon, Play, Upload, Type } from "lucide-react"
+import { Plus, GripVertical, Edit, Trash2, ImageIcon, Play, Upload, Type, AlertCircle } from "lucide-react"
+import { processImageUpload } from "@/lib/image-utils"
 
 interface ShowcaseItem {
   id: string
@@ -92,6 +93,18 @@ export function ShowcaseEditor({
   const [isMainEditorOpen, setIsMainEditorOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<"profile" | "showcase" | "resume" | "appearance" | "layout">("profile")
 
+  const [uploadStates, setUploadStates] = useState<{
+    profile: { loading: boolean; error: string | null }
+    item: { loading: boolean; error: string | null }
+    background: { loading: boolean; error: string | null }
+    resume: { loading: boolean; error: string | null }
+  }>({
+    profile: { loading: false, error: null },
+    item: { loading: false, error: null },
+    background: { loading: false, error: null },
+    resume: { loading: false, error: null },
+  })
+
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return
 
@@ -102,13 +115,59 @@ export function ShowcaseEditor({
     onItemsChange(newItems)
   }
 
-  const handleFileUpload = (file: File, callback: (url: string) => void) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const result = e.target?.result as string
-      callback(result)
+  const handleFileUpload = async (
+    file: File,
+    callback: (url: string) => void,
+    type: "profile" | "item" | "background" | "resume" = "item",
+  ) => {
+    setUploadStates((prev) => ({
+      ...prev,
+      [type]: { loading: true, error: null },
+    }))
+
+    try {
+      let processedFile: string
+
+      if (file.type.startsWith("image/")) {
+        // Determine compression settings based on use case
+        const compressionOptions = {
+          profile: { maxWidth: 400, maxHeight: 400, quality: 0.8, maxSizeKB: 200 },
+          item: { maxWidth: 800, maxHeight: 600, quality: 0.8, maxSizeKB: 400 },
+          background: { maxWidth: 1920, maxHeight: 1080, quality: 0.7, maxSizeKB: 500 },
+          resume: { maxWidth: 800, maxHeight: 600, quality: 0.8, maxSizeKB: 400 },
+        }
+
+        processedFile = await processImageUpload(file, compressionOptions[type])
+      } else {
+        // For non-image files (like PDFs), convert to base64 but check size
+        if (file.size > 1024 * 1024) {
+          // 1MB limit for non-images
+          throw new Error("File size must be less than 1MB")
+        }
+
+        processedFile = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = (e) => resolve(e.target?.result as string)
+          reader.onerror = () => reject(new Error("Failed to read file"))
+          reader.readAsDataURL(file)
+        })
+      }
+
+      callback(processedFile)
+      console.log(`[v0] ${type} file processed successfully`)
+    } catch (error: any) {
+      console.error(`[v0] Error uploading ${type} file:`, error)
+      setUploadStates((prev) => ({
+        ...prev,
+        [type]: { loading: false, error: error.message || "Failed to process file" },
+      }))
+      return
     }
-    reader.readAsDataURL(file)
+
+    setUploadStates((prev) => ({
+      ...prev,
+      [type]: { loading: false, error: null },
+    }))
   }
 
   const handleAddItem = (formData: FormData) => {
@@ -357,23 +416,36 @@ export function ShowcaseEditor({
                                 onChange={(e) => {
                                   const file = e.target.files?.[0]
                                   if (file) {
-                                    handleFileUpload(file, setUploadedProfilePicture)
+                                    handleFileUpload(file, setUploadedProfilePicture, "profile")
                                   }
                                 }}
                                 className="flex-1"
+                                disabled={uploadStates.profile.loading}
                               />
-                              <Button type="button" variant="outline" size="sm">
+                              <Button type="button" variant="outline" size="sm" disabled={uploadStates.profile.loading}>
                                 <Upload className="h-3 w-3" />
-                                Upload
+                                {uploadStates.profile.loading ? "Processing..." : "Upload"}
                               </Button>
                             </div>
-                            {uploadedProfilePicture && (
-                              <div className="flex items-center gap-2 text-sm text-green-600">
-                                <ImageIcon className="h-4 w-4" />
-                                Profile picture uploaded successfully
+
+                            {uploadStates.profile.error && (
+                              <div className="flex items-center gap-2 text-sm text-red-600">
+                                <AlertCircle className="h-4 w-4" />
+                                {uploadStates.profile.error}
                               </div>
                             )}
+
+                            {uploadedProfilePicture && !uploadStates.profile.error && (
+                              <div className="flex items-center gap-2 text-sm text-green-600">
+                                <ImageIcon className="h-4 w-4" />
+                                Profile picture processed successfully (Optimized for fast loading)
+                              </div>
+                            )}
+
                             <Input name="profilePicture" placeholder="Or describe your ideal profile picture" />
+                            <p className="text-xs text-muted-foreground">
+                              Images are automatically compressed to 400x400px and under 200KB for optimal performance
+                            </p>
                           </div>
                         </div>
                         <Button type="submit" className="w-full">
@@ -447,30 +519,47 @@ export function ShowcaseEditor({
                                         onChange={(e) => {
                                           const file = e.target.files?.[0]
                                           if (file) {
-                                            handleFileUpload(file, setUploadedItemFile)
+                                            handleFileUpload(file, setUploadedItemFile, "item")
                                           }
                                         }}
                                         className="flex-1"
+                                        disabled={uploadStates.item.loading}
                                       />
-                                      <Button type="button" variant="outline" size="sm">
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={uploadStates.item.loading}
+                                      >
                                         <Upload className="h-3 w-3" />
-                                        Upload
+                                        {uploadStates.item.loading ? "Processing..." : "Upload"}
                                       </Button>
                                     </div>
-                                    {uploadedItemFile && (
+
+                                    {uploadStates.item.error && (
+                                      <div className="flex items-center gap-2 text-sm text-red-600">
+                                        <AlertCircle className="h-4 w-4" />
+                                        {uploadStates.item.error}
+                                      </div>
+                                    )}
+
+                                    {uploadedItemFile && !uploadStates.item.error && (
                                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                         {newItemType === "image" ? (
                                           <ImageIcon className="h-4 w-4" />
                                         ) : (
                                           <Play className="h-4 w-4" />
                                         )}
-                                        {newItemType === "image" ? "Image" : "Video"} uploaded
+                                        {newItemType === "image" ? "Image" : "Video"} processed successfully
                                       </div>
                                     )}
                                     <Input
                                       name="content"
                                       placeholder={`Describe the ${newItemType} for placeholder generation`}
                                     />
+                                    <p className="text-xs text-muted-foreground">
+                                      Images are automatically compressed to 800x600px and under 400KB
+                                    </p>
                                   </div>
                                 )}
                               </div>
@@ -521,22 +610,35 @@ export function ShowcaseEditor({
                                 onChange={(e) => {
                                   const file = e.target.files?.[0]
                                   if (file) {
-                                    handleFileUpload(file, (url) => {
-                                      onResumeFileChange?.(url)
-                                    })
+                                    handleFileUpload(
+                                      file,
+                                      (url) => {
+                                        onResumeFileChange?.(url)
+                                      },
+                                      "resume",
+                                    )
                                   }
                                 }}
                                 className="flex-1"
+                                disabled={uploadStates.resume.loading}
                               />
-                              <Button type="button" variant="outline" size="sm">
+                              <Button type="button" variant="outline" size="sm" disabled={uploadStates.resume.loading}>
                                 <Upload className="h-3 w-3" />
-                                Upload
+                                {uploadStates.resume.loading ? "Processing..." : "Upload"}
                               </Button>
                             </div>
-                            {resumeFile && (
+
+                            {uploadStates.resume.error && (
+                              <div className="flex items-center gap-2 text-sm text-red-600">
+                                <AlertCircle className="h-4 w-4" />
+                                {uploadStates.resume.error}
+                              </div>
+                            )}
+
+                            {resumeFile && !uploadStates.resume.error && (
                               <div className="flex items-center gap-2 text-sm text-green-600">
                                 <ImageIcon className="h-4 w-4" />
-                                Resume uploaded successfully
+                                Resume processed successfully
                               </div>
                             )}
                             {resumeFile && (
@@ -550,6 +652,7 @@ export function ShowcaseEditor({
                                 Remove Resume
                               </Button>
                             )}
+                            <p className="text-xs text-muted-foreground">PDF files are limited to 1MB.</p>
                           </div>
                         </div>
                       </div>
@@ -625,18 +728,43 @@ export function ShowcaseEditor({
                                 onChange={(e) => {
                                   const file = e.target.files?.[0]
                                   if (file) {
-                                    handleFileUpload(file, (url) => {
-                                      setUploadedBackgroundImage(url)
-                                      onBackgroundImageChange?.(url)
-                                    })
+                                    handleFileUpload(
+                                      file,
+                                      (url) => {
+                                        setUploadedBackgroundImage(url)
+                                        onBackgroundImageChange?.(url)
+                                      },
+                                      "background",
+                                    )
                                   }
                                 }}
                                 className="flex-1"
+                                disabled={uploadStates.background.loading}
                               />
-                              <Button type="button" variant="outline" size="sm">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={uploadStates.background.loading}
+                              >
                                 <Upload className="h-3 w-3" />
+                                {uploadStates.background.loading ? "Processing..." : "Upload"}
                               </Button>
                             </div>
+
+                            {uploadStates.background.error && (
+                              <div className="flex items-center gap-2 text-sm text-red-600">
+                                <AlertCircle className="h-4 w-4" />
+                                {uploadStates.background.error}
+                              </div>
+                            )}
+
+                            {backgroundImage && !uploadStates.background.error && (
+                              <div className="flex items-center gap-2 text-sm text-green-600">
+                                <ImageIcon className="h-4 w-4" />
+                                Background image processed successfully
+                              </div>
+                            )}
                             {backgroundImage && (
                               <Button
                                 type="button"
@@ -648,6 +776,9 @@ export function ShowcaseEditor({
                                 Remove Background Image
                               </Button>
                             )}
+                            <p className="text-xs text-muted-foreground">
+                              Images are automatically compressed to 1920x1080px and under 500KB
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -836,17 +967,26 @@ export function ShowcaseEditor({
                         onChange={(e) => {
                           const file = e.target.files?.[0]
                           if (file) {
-                            handleFileUpload(file, setEditUploadedFile)
+                            handleFileUpload(file, setEditUploadedFile, "item")
                           }
                         }}
                         className="flex-1"
+                        disabled={uploadStates.item.loading}
                       />
-                      <Button type="button" variant="outline" size="sm">
+                      <Button type="button" variant="outline" size="sm" disabled={uploadStates.item.loading}>
                         <Upload className="h-3 w-3" />
-                        Upload
+                        {uploadStates.item.loading ? "Processing..." : "Upload"}
                       </Button>
                     </div>
-                    {editUploadedFile && (
+
+                    {uploadStates.item.error && (
+                      <div className="flex items-center gap-2 text-sm text-red-600">
+                        <AlertCircle className="h-4 w-4" />
+                        {uploadStates.item.error}
+                      </div>
+                    )}
+
+                    {editUploadedFile && !uploadStates.item.error && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         {editingItemType === "image" ? <ImageIcon className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                         {editingItemType === "image" ? "Image" : "Video"} uploaded
@@ -857,6 +997,9 @@ export function ShowcaseEditor({
                       placeholder={`Describe the ${editingItemType} for placeholder generation`}
                       defaultValue={editingItem.type !== "text" ? editingItem.content : ""}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Images are automatically compressed to 800x600px and under 400KB
+                    </p>
                   </div>
                 )}
               </div>
