@@ -13,6 +13,7 @@ import {
   type Timestamp,
 } from "firebase/firestore"
 import { db, isFirebaseConfigured } from "./firebase"
+import { auth } from "./firebase"
 
 // Profile data structure
 export interface UserProfile {
@@ -44,12 +45,24 @@ export interface ShowcaseItem {
   description: string
 }
 
-// Create or update user profile
 export async function saveUserProfile(userId: string, profileData: Partial<UserProfile>): Promise<void> {
   if (!isFirebaseConfigured() || !db) {
     console.log("[v0] Firebase not configured, skipping profile save")
     return
   }
+
+  // Check if user is authenticated
+  if (!auth?.currentUser) {
+    console.log("[v0] No authenticated user for save operation, waiting...")
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    if (!auth?.currentUser) {
+      console.log("[v0] Still no authenticated user for save operation")
+      throw new Error("FIREBASE_PERMISSIONS_ERROR")
+    }
+  }
+
+  console.log("[v0] Authenticated user for save:", auth.currentUser.uid)
+  console.log("[v0] Saving profile for:", userId)
 
   try {
     const profileRef = doc(db, "profiles", userId)
@@ -80,6 +93,13 @@ export async function saveUserProfile(userId: string, profileData: Partial<UserP
       console.log("[v0] New profile created successfully")
     }
   } catch (error: any) {
+    console.log("[v0] Save error details:", {
+      code: error?.code,
+      message: error?.message,
+      authUser: auth?.currentUser?.uid,
+      targetUserId: userId,
+    })
+
     if (error?.message?.includes("client is offline") || error?.code === "unavailable") {
       console.log("[v0] Firebase is offline, profile changes saved locally only")
       return
@@ -95,12 +115,25 @@ export async function saveUserProfile(userId: string, profileData: Partial<UserP
   }
 }
 
-// Get user profile by userId
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
   if (!isFirebaseConfigured() || !db) {
     console.log("[v0] Firebase not configured, returning null profile")
     return null
   }
+
+  // Check if user is authenticated
+  if (!auth?.currentUser) {
+    console.log("[v0] No authenticated user, waiting for auth state...")
+    // Wait a bit for auth state to settle
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    if (!auth?.currentUser) {
+      console.log("[v0] Still no authenticated user after waiting")
+      throw new Error("FIREBASE_PERMISSIONS_ERROR")
+    }
+  }
+
+  console.log("[v0] Authenticated user:", auth.currentUser.uid)
+  console.log("[v0] Requesting profile for:", userId)
 
   try {
     const profileRef = doc(db, "profiles", userId)
@@ -114,6 +147,13 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     console.log("[v0] No profile found in Firestore")
     return null
   } catch (error: any) {
+    console.log("[v0] Firestore error details:", {
+      code: error?.code,
+      message: error?.message,
+      authUser: auth?.currentUser?.uid,
+      requestedUserId: userId,
+    })
+
     if (error?.message?.includes("client is offline") || error?.code === "unavailable") {
       console.log("[v0] Firebase is offline, falling back to local profile")
       return null
