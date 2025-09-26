@@ -108,6 +108,8 @@ export function ShowcaseEditor({
     setIsMounted(true)
     const presets = JSON.parse(localStorage.getItem("profilePresets") || "[]")
     setSavedPresets(presets)
+
+    console.log("[v0] Drag and drop initialized for v0 environment")
   }, [])
 
   const handleLoadPreset = (preset: any) => {
@@ -139,12 +141,17 @@ export function ShowcaseEditor({
   })
 
   const handleDragEnd = (result: DropResult) => {
-    if (!result.destination) return
+    console.log("[v0] Drag end triggered:", result)
+    if (!result.destination) {
+      console.log("[v0] No destination, drag cancelled")
+      return
+    }
 
     const newItems = Array.from(items)
     const [reorderedItem] = newItems.splice(result.source.index, 1)
     newItems.splice(result.destination.index, 0, reorderedItem)
 
+    console.log("[v0] Items reordered successfully")
     onItemsChange(newItems)
   }
 
@@ -938,11 +945,16 @@ export function ShowcaseEditor({
                               : "md:col-span-2 lg:col-span-3"
                             : ""
                         }`}
+                        style={{ touchAction: "none" }}
                       >
                         <CardHeader className="pb-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <div {...provided.dragHandleProps} className="cursor-grab">
+                              <div
+                                {...provided.dragHandleProps}
+                                className="cursor-grab active:cursor-grabbing"
+                                style={{ touchAction: "none" }}
+                              >
                                 <GripVertical className="h-4 w-4 text-muted-foreground" />
                               </div>
                               {item.size === "long" && (
