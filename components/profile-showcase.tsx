@@ -348,7 +348,9 @@ export function ProfileShowcase({
         : layout === "spotlight" && index === 0
           ? "md:col-span-2 lg:col-span-3"
           : item.size === "long"
-            ? "md:col-span-2 lg:col-span-3"
+            ? layout === "grid"
+              ? "col-span-2 md:col-span-3 lg:col-span-4"
+              : "md:col-span-2 lg:col-span-3"
             : ""
 
     const cardSize = layout === "grid" ? "h-48" : layout === "minimal" ? "h-64" : "h-auto"

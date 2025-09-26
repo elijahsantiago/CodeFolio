@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -92,6 +92,29 @@ export function ShowcaseEditor({
   const [uploadedBackgroundImage, setUploadedBackgroundImage] = useState<string | null>(null)
   const [isMainEditorOpen, setIsMainEditorOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<"profile" | "showcase" | "resume" | "appearance" | "layout">("profile")
+
+  const [savedPresets, setSavedPresets] = useState<any[]>([])
+
+  useEffect(() => {
+    const presets = JSON.parse(localStorage.getItem("profilePresets") || "[]")
+    setSavedPresets(presets)
+  }, [])
+
+  const handleLoadPreset = (preset: any) => {
+    const { data } = preset
+    onProfileChange?.({
+      profileName: data.profileName,
+      profileDescription: data.profileDescription,
+      profilePicture: data.profilePicture,
+    })
+    onLayoutChange?.(data.layout)
+    onBackgroundColorChange?.(data.backgroundColor)
+    onBackgroundImageChange?.(data.backgroundImage)
+    onContentBoxColorChange?.(data.contentBoxColor)
+    onContentBoxTrimColorChange?.(data.contentBoxTrimColor)
+    onThemeChange?.(data.theme)
+    onItemsChange(data.showcaseItems || [])
+  }
 
   const [uploadStates, setUploadStates] = useState<{
     profile: { loading: boolean; error: string | null }
@@ -373,6 +396,7 @@ export function ShowcaseEditor({
                       { id: "resume", label: "Resume", icon: "📄" },
                       { id: "appearance", label: "Appearance", icon: "🎨" },
                       { id: "layout", label: "Layout", icon: "📐" },
+                      { id: "presets", label: "Presets", icon: "⭐" },
                     ].map((tab) => (
                       <button
                         key={tab.id}
@@ -825,6 +849,7 @@ export function ShowcaseEditor({
                             className={`cursor-pointer transition-all hover:shadow-md ${
                               layout === key ? "ring-2 ring-primary" : ""
                             }`}
+                            onClick={() => onLayoutChange?.(key as any)}
                           >
                             <CardHeader className="pb-2">
                               <div className="flex items-center justify-between">
@@ -832,15 +857,46 @@ export function ShowcaseEditor({
                                   <CardTitle className="text-base capitalize">{key}</CardTitle>
                                   {layout === key && <Badge>Current</Badge>}
                                 </div>
-                                <Button size="sm" onClick={() => onLayoutChange?.(key as any)}>
-                                  Select
-                                </Button>
                               </div>
                               <CardDescription className="text-sm">{description}</CardDescription>
                             </CardHeader>
                           </Card>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {activeTab === "presets" && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold">Saved Presets</h3>
+                      {savedPresets.length > 0 ? (
+                        <div className="space-y-3">
+                          {savedPresets.map((preset) => (
+                            <Card
+                              key={preset.id}
+                              className="cursor-pointer transition-all hover:shadow-md"
+                              onClick={() => handleLoadPreset(preset)}
+                            >
+                              <CardHeader className="pb-2">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <CardTitle className="text-base">{preset.name}</CardTitle>
+                                    <CardDescription className="text-sm">
+                                      Created {new Date(preset.createdAt).toLocaleDateString()}
+                                    </CardDescription>
+                                  </div>
+                                  <Badge variant="outline">{preset.data.layout}</Badge>
+                                </div>
+                              </CardHeader>
+                            </Card>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <p>No saved presets yet</p>
+                          <p className="text-sm">Save your current profile as a preset to reuse it later</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -865,7 +921,11 @@ export function ShowcaseEditor({
                       ref={provided.innerRef}
                       {...provided.draggableProps}
                       className={`transition-shadow ${snapshot.isDragging ? "shadow-lg rotate-2" : "hover:shadow-md"} ${
-                        item.size === "long" ? "md:col-span-2 lg:col-span-3" : ""
+                        item.size === "long"
+                          ? layout === "grid"
+                            ? "md:col-span-2 lg:col-span-4"
+                            : "md:col-span-2 lg:col-span-3"
+                          : ""
                       }`}
                     >
                       <CardHeader className="pb-2">

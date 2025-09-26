@@ -1,24 +1,21 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { ProfileShowcase } from "@/components/profile-showcase"
 import { ShowcaseEditor } from "@/components/showcase-editor"
-import { AuthModal } from "@/components/auth-modal"
 import { ProfileSearch } from "@/components/profile-search"
 import { Button } from "@/components/ui/button"
-import { Edit, Eye, LogIn, LogOut, User } from "lucide-react"
+import { Edit, Eye, LogOut, User, Loader2 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useProfile } from "@/hooks/use-profile"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { QuickProfileSetup } from "@/components/quick-profile-setup"
 
 export default function HomePage() {
   const [isEditing, setIsEditing] = useState(false)
-  const [showAuthModal, setShowAuthModal] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
-  const [showProfileSetup, setShowProfileSetup] = useState(false)
   const { user, loading: authLoading, logout } = useAuth()
   const { profile, loading: profileLoading, updateProfile } = useProfile()
+  const router = useRouter()
 
   const [currentLayout, setCurrentLayout] = useState<"default" | "minimal" | "grid" | "masonry" | "spotlight">("grid")
   const [backgroundColor, setBackgroundColor] = useState("#ffffff")
@@ -118,6 +115,12 @@ export default function HomePage() {
   ])
 
   useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login")
+    }
+  }, [user, authLoading, router])
+
+  useEffect(() => {
     if (profile) {
       setCurrentLayout(profile.layout)
       setBackgroundColor(profile.backgroundColor)
@@ -132,37 +135,8 @@ export default function HomePage() {
         profileDescription: profile.profileDescription,
       })
       setShowcaseItems(profile.showcaseItems)
-    } else if (user && !profile) {
-      setShowProfileSetup(true)
     }
   }, [profile, user])
-
-  const handleQuickProfileSetup = async (data: {
-    profileName: string
-    profileDescription: string
-    profilePicture?: string
-  }) => {
-    const updatedData = {
-      ...data,
-      layout: currentLayout,
-      backgroundColor,
-      backgroundImage,
-      contentBoxColor,
-      contentBoxTrimColor,
-      theme: currentTheme,
-      resumeFile,
-      showcaseItems,
-    }
-
-    setProfileData({
-      profilePicture: data.profilePicture || profileData.profilePicture,
-      profileName: data.profileName,
-      profileDescription: data.profileDescription,
-    })
-
-    await handleProfileUpdate(updatedData)
-    setShowProfileSetup(false)
-  }
 
   const handleProfileUpdate = async (updates: any) => {
     if (profile && updateProfile) {
@@ -174,33 +148,10 @@ export default function HomePage() {
     }
   }
 
-  useEffect(() => {
-    const htmlElement = document.documentElement
-
-    // Remove all theme classes
-    htmlElement.classList.remove("dark", "light-business", "dark-business", "business-casual")
-
-    // Apply the selected theme
-    htmlElement.classList.add(currentTheme)
-
-    if (currentTheme === "dark-business") {
-      // Only sync if colors haven't been manually changed from defaults
-      if (contentBoxColor === "#ffffff" && contentBoxTrimColor === "#6b7280") {
-        setContentBoxColor("#1f2937")
-        setContentBoxTrimColor("#374151")
-      }
-    } else if (currentTheme === "light-business") {
-      // Reset to light defaults if switching back
-      if (contentBoxColor === "#1f2937" && contentBoxTrimColor === "#374151") {
-        setContentBoxColor("#ffffff")
-        setContentBoxTrimColor("#6b7280")
-      }
-    }
-  }, [currentTheme, contentBoxColor, contentBoxTrimColor])
-
   const handleLogout = async () => {
     try {
       await logout()
+      router.push("/login")
     } catch (error) {
       console.error("Logout error:", error)
     }
@@ -210,15 +161,19 @@ export default function HomePage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p>Loading...</p>
         </div>
       </div>
     )
   }
 
+  if (!user) {
+    return null
+  }
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className={`min-h-screen bg-background ${currentTheme}`}>
       <main className="container mx-auto px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -228,23 +183,14 @@ export default function HomePage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {user ? (
-              <>
-                <div className="flex items-center gap-2 text-sm">
-                  <User className="h-4 w-4" />
-                  <span>{user.email}</span>
-                </div>
-                <Button variant="outline" size="sm" onClick={handleLogout}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </Button>
-              </>
-            ) : (
-              <Button variant="outline" size="sm" onClick={() => setShowAuthModal(true)}>
-                <LogIn className="h-4 w-4 mr-2" />
-                Login
-              </Button>
-            )}
+            <div className="flex items-center gap-2 text-sm">
+              <User className="h-4 w-4" />
+              <span>{user.email}</span>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
           </div>
         </div>
 
@@ -252,27 +198,25 @@ export default function HomePage() {
           <ProfileSearch />
         ) : (
           <>
-            {user && (
-              <div className="fixed top-4 right-4 z-50">
-                <Button
-                  onClick={() => setIsEditing(!isEditing)}
-                  variant={isEditing ? "secondary" : "default"}
-                  size="sm"
-                  className="gap-2 shadow-lg bg-background/80 backdrop-blur-sm border border-border hover:bg-primary hover:text-primary-foreground transition-all duration-300"
-                >
-                  {isEditing ? (
-                    <>
-                      <Eye className="h-4 w-4" />
-                      Preview
-                    </>
-                  ) : (
-                    <Edit className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            )}
+            <div className="fixed top-4 right-4 z-50">
+              <Button
+                onClick={() => setIsEditing(!isEditing)}
+                variant={isEditing ? "secondary" : "default"}
+                size="sm"
+                className="gap-2 shadow-lg bg-primary text-primary-foreground hover:bg-primary/90 border-2 border-primary-foreground/20 transition-all duration-300"
+              >
+                {isEditing ? (
+                  <>
+                    <Eye className="h-4 w-4" />
+                    Preview
+                  </>
+                ) : (
+                  <Edit className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
 
-            {isEditing && user ? (
+            {isEditing ? (
               <ShowcaseEditor
                 items={showcaseItems}
                 onItemsChange={(items) => {
@@ -342,18 +286,6 @@ export default function HomePage() {
           </>
         )}
       </main>
-
-      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
-
-      <Dialog open={showProfileSetup} onOpenChange={setShowProfileSetup}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Welcome! Set up your profile</DialogTitle>
-            <DialogDescription>Let's personalize your profile to make it uniquely yours.</DialogDescription>
-          </DialogHeader>
-          <QuickProfileSetup onComplete={handleQuickProfileSetup} onSkip={() => setShowProfileSetup(false)} />
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

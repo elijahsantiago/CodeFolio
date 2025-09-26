@@ -3,15 +3,14 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Search, User, Eye, AlertCircle } from "lucide-react"
+import { Search, User, AlertCircle } from "lucide-react"
 import { searchProfiles, getPublicProfiles, type UserProfile } from "@/lib/firestore"
-import { ProfileShowcase } from "./profile-showcase"
 import { isFirebaseConfigured } from "@/lib/firebase"
 
 interface ProfileSearchProps {
@@ -23,9 +22,8 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
   const [searchResults, setSearchResults] = useState<UserProfile[]>([])
   const [publicProfiles, setPublicProfiles] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(false)
-  const [selectedProfile, setSelectedProfile] = useState<UserProfile | null>(null)
-  const [showProfileModal, setShowProfileModal] = useState(false)
   const [firebaseAvailable, setFirebaseAvailable] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     setFirebaseAvailable(isFirebaseConfigured())
@@ -73,8 +71,7 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
   }
 
   const viewProfile = (profile: UserProfile) => {
-    setSelectedProfile(profile)
-    setShowProfileModal(true)
+    router.push(`/profile/${profile.id}`)
   }
 
   const displayProfiles = searchTerm.trim() ? searchResults : publicProfiles
@@ -126,83 +123,98 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {displayProfiles.map((profile) => (
-          <Card key={profile.id} className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3 mb-3">
-                <Avatar className="h-12 w-12">
+          <Card
+            key={profile.id}
+            className="hover:shadow-xl transition-all duration-300 cursor-pointer group hover:scale-[1.02]"
+            onClick={() => viewProfile(profile)}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4 mb-4">
+                <Avatar className="h-16 w-16 ring-2 ring-primary/20">
                   <AvatarImage src={profile.profilePicture || "/placeholder.svg"} alt={profile.profileName} />
                   <AvatarFallback>
-                    <User className="h-6 w-6" />
+                    <User className="h-8 w-8" />
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold truncate">{profile.profileName}</h4>
+                  <h4 className="font-bold text-lg truncate group-hover:text-primary transition-colors">
+                    {profile.profileName}
+                  </h4>
                   <p className="text-sm text-muted-foreground truncate">{profile.email}</p>
+                  <div className="flex gap-2 mt-2">
+                    <Badge variant="secondary" className="text-xs">
+                      {profile.layout}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {profile.showcaseItems.length} items
+                    </Badge>
+                  </div>
                 </div>
               </div>
 
-              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{profile.profileDescription}</p>
+              <p className="text-sm text-muted-foreground mb-4 line-clamp-3">{profile.profileDescription}</p>
 
-              <div className="flex items-center justify-between">
-                <div className="flex gap-1">
-                  <Badge variant="secondary" className="text-xs">
-                    {profile.layout}
-                  </Badge>
-                  <Badge variant="outline" className="text-xs">
-                    {profile.showcaseItems.length} items
-                  </Badge>
+              {profile.showcaseItems.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Portfolio Preview</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {profile.showcaseItems.slice(0, 4).map((item, index) => (
+                      <div
+                        key={item.id}
+                        className="aspect-square bg-muted rounded-lg overflow-hidden relative group/item"
+                      >
+                        {item.type === "image" && item.content ? (
+                          <img
+                            src={item.content || "/placeholder.svg"}
+                            alt={item.title}
+                            className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
+                            <div className="text-center p-2">
+                              <p className="text-xs font-medium truncate">{item.title}</p>
+                              {item.type === "text" && (
+                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                  {item.content.substring(0, 50)}...
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {index === 3 && profile.showcaseItems.length > 4 && (
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                            <span className="text-white font-medium text-sm">
+                              +{profile.showcaseItems.length - 4} more
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-
-                <Button size="sm" variant="outline" onClick={() => viewProfile(profile)} className="gap-1">
-                  <Eye className="h-3 w-3" />
-                  View
-                </Button>
-              </div>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
 
       {displayProfiles.length === 0 && searchTerm.trim() && !loading && (
-        <div className="text-center py-8">
+        <div className="text-center py-12">
+          <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No profiles found</h3>
           <p className="text-muted-foreground">No profiles found matching "{searchTerm}"</p>
         </div>
       )}
 
       {displayProfiles.length === 0 && !searchTerm.trim() && (
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">No public profiles available yet</p>
+        <div className="text-center py-12">
+          <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No public profiles yet</h3>
+          <p className="text-muted-foreground">Be the first to create a public profile!</p>
         </div>
       )}
-
-      {/* Profile View Modal */}
-      <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{selectedProfile?.profileName}'s Portfolio</DialogTitle>
-          </DialogHeader>
-
-          {selectedProfile && (
-            <div className="mt-4">
-              <ProfileShowcase
-                items={selectedProfile.showcaseItems}
-                profilePicture={selectedProfile.profilePicture}
-                profileName={selectedProfile.profileName}
-                profileDescription={selectedProfile.profileDescription}
-                layout={selectedProfile.layout}
-                backgroundColor={selectedProfile.backgroundColor}
-                backgroundImage={selectedProfile.backgroundImage}
-                contentBoxColor={selectedProfile.contentBoxColor}
-                contentBoxTrimColor={selectedProfile.contentBoxTrimColor}
-                friends={[]} // Don't show friends for other users
-                resumeFile={selectedProfile.resumeFile}
-              />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

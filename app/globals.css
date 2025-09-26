@@ -4,40 +4,40 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Updated color tokens to match green-based design brief */
-  --background: oklch(0.98 0.02 142); /* #f0fdf4 - Light neutral background */
-  --foreground: oklch(0.27 0.01 258); /* #374151 - Dark neutral for primary text */
+  /* Updated root theme to use neutral colors instead of green to prevent green tint fallback */
+  --background: oklch(0.98 0.01 220); /* #f8fafc - Neutral light background */
+  --foreground: oklch(0.15 0.01 220); /* #1e293b - Neutral dark text */
   --card: oklch(1 0 0); /* #ffffff - White for content cards */
-  --card-foreground: oklch(0.27 0.01 258); /* #374151 - Dark text on cards */
+  --card-foreground: oklch(0.15 0.01 220); /* #1e293b - Dark text on cards */
   --popover: oklch(1 0 0); /* #ffffff - White for popover elements */
-  --popover-foreground: oklch(0.27 0.01 258); /* #374151 - Dark text in popovers */
-  --primary: oklch(0.45 0.15 142); /* #15803d - Primary action color */
+  --popover-foreground: oklch(0.15 0.01 220); /* #1e293b - Dark text in popovers */
+  --primary: oklch(0.45 0.12 220); /* #3b82f6 - Neutral blue primary */
   --primary-foreground: oklch(1 0 0); /* #ffffff - Text color on primary buttons */
-  --secondary: oklch(0.75 0.18 110); /* #84cc16 - Accent color for highlights */
-  --secondary-foreground: oklch(0.27 0.01 258); /* #374151 - Text color on secondary elements */
-  --muted: oklch(0.98 0.02 142); /* #f0fdf4 - Light neutral for muted areas */
-  --muted-foreground: oklch(0.45 0.01 258); /* #6b7280 - Muted text color */
-  --accent: oklch(0.75 0.18 110); /* #84cc16 - Accent color for interactive elements */
-  --accent-foreground: oklch(0.27 0.01 258); /* #374151 - Text color on accent elements */
+  --secondary: oklch(0.92 0.02 220); /* #f1f5f9 - Neutral secondary */
+  --secondary-foreground: oklch(0.15 0.01 220); /* #1e293b - Text color on secondary elements */
+  --muted: oklch(0.96 0.01 220); /* #f8fafc - Neutral muted background */
+  --muted-foreground: oklch(0.45 0.01 220); /* #64748b - Muted text color */
+  --accent: oklch(0.92 0.02 220); /* #f1f5f9 - Neutral accent */
+  --accent-foreground: oklch(0.15 0.01 220); /* #1e293b - Text color on accent elements */
   --destructive: oklch(0.55 0.22 25); /* #dc2626 - Red for destructive actions */
   --destructive-foreground: oklch(1 0 0); /* #ffffff - Text color on destructive buttons */
-  --border: oklch(0.85 0.01 258); /* #d1d5db - Light gray for borders */
+  --border: oklch(0.88 0.01 220); /* #e2e8f0 - Neutral border */
   --input: oklch(1 0 0); /* #ffffff - White for input fields */
-  --ring: oklch(0.75 0.18 110); /* #84cc16 - Green for focus rings */
-  --chart-1: oklch(0.45 0.15 142); /* Primary chart color */
-  --chart-2: oklch(0.75 0.18 110); /* Accent chart color */
-  --chart-3: oklch(0.85 0.01 258); /* Neutral chart color */
-  --chart-4: oklch(0.27 0.01 258); /* Dark chart color */
-  --chart-5: oklch(0.98 0.02 142); /* Light chart color */
+  --ring: oklch(0.45 0.12 220); /* #3b82f6 - Neutral focus ring */
+  --chart-1: oklch(0.45 0.12 220); /* Primary chart color */
+  --chart-2: oklch(0.92 0.02 220); /* Secondary chart color */
+  --chart-3: oklch(0.88 0.01 220); /* Neutral chart color */
+  --chart-4: oklch(0.15 0.01 220); /* Dark chart color */
+  --chart-5: oklch(0.96 0.01 220); /* Light chart color */
   --radius: 0.5rem; /* Corner rounding for cards and buttons */
   --sidebar: oklch(1 0 0); /* #ffffff - Sidebar background */
-  --sidebar-foreground: oklch(0.27 0.01 258); /* #374151 - Sidebar text color */
-  --sidebar-primary: oklch(0.45 0.15 142); /* #15803d - Primary color for sidebar elements */
+  --sidebar-foreground: oklch(0.15 0.01 220); /* #1e293b - Sidebar text color */
+  --sidebar-primary: oklch(0.45 0.12 220); /* #3b82f6 - Primary color for sidebar elements */
   --sidebar-primary-foreground: oklch(1 0 0); /* #ffffff - Text color for primary sidebar elements */
-  --sidebar-accent: oklch(0.75 0.18 110); /* #84cc16 - Accent color for sidebar highlights */
-  --sidebar-accent-foreground: oklch(0.27 0.01 258); /* #374151 - Text color for sidebar accent elements */
-  --sidebar-border: oklch(0.85 0.01 258); /* #d1d5db - Border color for sidebar */
-  --sidebar-ring: oklch(0.75 0.18 110); /* #84cc16 - Focus ring color for sidebar elements */
+  --sidebar-accent: oklch(0.92 0.02 220); /* #f1f5f9 - Accent color for sidebar highlights */
+  --sidebar-accent-foreground: oklch(0.15 0.01 220); /* #1e293b - Text color for sidebar accent elements */
+  --sidebar-border: oklch(0.88 0.01 220); /* #e2e8f0 - Border color for sidebar */
+  --sidebar-ring: oklch(0.45 0.12 220); /* #3b82f6 - Focus ring color for sidebar elements */
 }
 
 .dark {
