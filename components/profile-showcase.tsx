@@ -415,18 +415,16 @@ export function ProfileShowcase({
               >
                 Portfolio Showcase
               </button>
-              {resumeFile && (
-                <button
-                  onClick={() => setActiveTab("resume")}
-                  className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all duration-200 ${
-                    activeTab === "resume"
-                      ? "bg-background text-foreground shadow-sm border border-border"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                  }`}
-                >
-                  Resume
-                </button>
-              )}
+              <button
+                onClick={() => setActiveTab("resume")}
+                className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                  activeTab === "resume"
+                    ? "bg-background text-foreground shadow-sm border border-border"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                }`}
+              >
+                Resume
+              </button>
             </div>
 
             {resumeFile && (
@@ -446,25 +444,37 @@ export function ProfileShowcase({
             <div className={getLayoutClasses()}>{items.map((item, index) => renderShowcaseItem(item, index))}</div>
           )}
 
-          {activeTab === "resume" && resumeFile && (
+          {activeTab === "resume" && (
             <div className="bg-card/50 backdrop-blur-sm rounded-xl border border-border/50 p-8 shadow-sm">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-semibold text-foreground">Professional Resume</h3>
-                <Button onClick={() => setShowResumeModal(true)} variant="outline" size="sm" className="gap-2">
-                  <ImageIcon className="h-4 w-4" />
-                  Full Screen
-                </Button>
+                {resumeFile && (
+                  <Button onClick={() => setShowResumeModal(true)} variant="outline" size="sm" className="gap-2">
+                    <ImageIcon className="h-4 w-4" />
+                    Full Screen
+                  </Button>
+                )}
               </div>
-              <div className="bg-background rounded-lg border border-border overflow-hidden shadow-inner">
-                <iframe
-                  src={resumeFile}
-                  className="w-full h-[700px]"
-                  title="Resume"
-                  style={{ border: "none" }}
-                  onLoad={() => console.log("[v0] Resume loaded successfully")}
-                  onError={() => console.log("[v0] Resume failed to load")}
-                />
-              </div>
+              {resumeFile ? (
+                <div className="bg-background rounded-lg border border-border overflow-hidden shadow-inner">
+                  <iframe
+                    src={resumeFile}
+                    className="w-full h-[700px]"
+                    title="Resume"
+                    style={{ border: "none" }}
+                    onLoad={() => console.log("[v0] Resume loaded successfully")}
+                    onError={() => console.log("[v0] Resume failed to load")}
+                  />
+                </div>
+              ) : (
+                <div className="bg-background rounded-lg border border-border p-12 text-center">
+                  <div className="text-muted-foreground">
+                    <ImageIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg mb-2">No resume uploaded yet</p>
+                    <p className="text-sm">Upload your resume in the edit profile section to display it here.</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

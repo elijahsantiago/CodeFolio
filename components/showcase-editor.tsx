@@ -11,8 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Plus, GripVertical, Edit, Trash2, ImageIcon, Play, Upload } from "lucide-react"
-import { Type } from "lucide-react" // Import the Type component
+import { Plus, GripVertical, Edit, Trash2, ImageIcon, Play, Upload, Type } from "lucide-react"
 
 interface ShowcaseItem {
   id: string
@@ -86,20 +85,12 @@ export function ShowcaseEditor({
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [newItemType, setNewItemType] = useState<"image" | "video" | "text">("image")
   const [newItemSize, setNewItemSize] = useState<"normal" | "long">("normal")
-  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false)
   const [uploadedProfilePicture, setUploadedProfilePicture] = useState<string | null>(null)
   const [uploadedItemFile, setUploadedItemFile] = useState<string | null>(null)
   const [editUploadedFile, setEditUploadedFile] = useState<string | null>(null)
-  const [previewLayout, setPreviewLayout] = useState<"default" | "minimal" | "grid" | "masonry" | "spotlight" | null>(
-    null,
-  )
-  const [isLayoutDialogOpen, setIsLayoutDialogOpen] = useState(false)
   const [uploadedBackgroundImage, setUploadedBackgroundImage] = useState<string | null>(null)
   const [isMainEditorOpen, setIsMainEditorOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<"profile" | "showcase" | "resume" | "appearance" | "layout" | "friends">(
-    "profile",
-  )
-  const [newFriendName, setNewFriendName] = useState("")
+  const [activeTab, setActiveTab] = useState<"profile" | "showcase" | "resume" | "appearance" | "layout">("profile")
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return
@@ -199,7 +190,6 @@ export function ShowcaseEditor({
       profileDescription: description,
       profilePicture: profilePic,
     })
-    setIsProfileDialogOpen(false)
     setUploadedProfilePicture(null)
   }
 
@@ -265,43 +255,32 @@ export function ShowcaseEditor({
     spotlight: "Hero-focused design with prominent profile",
   }
 
-  const handleLayoutSelect = (selectedLayout: "default" | "minimal" | "grid" | "masonry" | "spotlight") => {
-    onLayoutChange?.(selectedLayout)
-    setIsLayoutDialogOpen(false)
-    setPreviewLayout(null)
-  }
-
-  const handleAddFriend = () => {
-    if (!newFriendName.trim()) return
-
-    const newFriend: Friend = {
-      id: Date.now().toString(),
-      name: newFriendName.trim(),
-      avatar: `/placeholder.svg?height=40&width=40&query=${encodeURIComponent(newFriendName)} avatar`,
-      status: Math.random() > 0.5 ? "online" : Math.random() > 0.5 ? "away" : "offline",
-      lastSeen: Math.random() > 0.5 ? "2 hours ago" : undefined,
+  const handleSaveAsPreset = () => {
+    const presetData = {
+      profileName,
+      profileDescription,
+      profilePicture,
+      layout,
+      backgroundColor,
+      backgroundImage,
+      contentBoxColor,
+      contentBoxTrimColor,
+      theme,
+      showcaseItems: items.slice(0, 6),
     }
 
-    onFriendsChange?.([...friends, newFriend])
-    setNewFriendName("")
-  }
+    const savedPresets = JSON.parse(localStorage.getItem("profilePresets") || "[]")
+    const newPreset = {
+      id: Date.now().toString(),
+      name: `${profileName}'s Profile`,
+      data: presetData,
+      createdAt: new Date().toISOString(),
+    }
 
-  const handleRemoveFriend = (friendId: string) => {
-    onFriendsChange?.(friends.filter((friend) => friend.id !== friendId))
-  }
+    savedPresets.push(newPreset)
+    localStorage.setItem("profilePresets", JSON.stringify(savedPresets.slice(-5)))
 
-  const handleToggleFriendStatus = (friendId: string) => {
-    const statuses: ("online" | "offline" | "away")[] = ["online", "away", "offline"]
-    onFriendsChange?.(
-      friends.map((friend) => {
-        if (friend.id === friendId) {
-          const currentIndex = statuses.indexOf(friend.status)
-          const nextStatus = statuses[(currentIndex + 1) % statuses.length]
-          return { ...friend, status: nextStatus }
-        }
-        return friend
-      }),
-    )
+    alert("Profile saved as preset!")
   }
 
   return (
@@ -312,6 +291,9 @@ export function ShowcaseEditor({
           <p className="text-muted-foreground">Customize your profile, showcase, and friends</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleSaveAsPreset}>
+            Save as Preset
+          </Button>
           <Dialog open={isMainEditorOpen} onOpenChange={setIsMainEditorOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2">
@@ -319,7 +301,7 @@ export function ShowcaseEditor({
                 Edit Profile
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-5xl w-[95vw] max-h-[85vh] overflow-hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <DialogContent className="max-w-5xl w-[95vw] max-h-[85vh] overflow-hidden">
               <DialogHeader>
                 <DialogTitle>Profile Editor</DialogTitle>
               </DialogHeader>
@@ -332,8 +314,6 @@ export function ShowcaseEditor({
                       { id: "resume", label: "Resume", icon: "📄" },
                       { id: "appearance", label: "Appearance", icon: "🎨" },
                       { id: "layout", label: "Layout", icon: "📐" },
-                      // Updated friends tab label to connections
-                      { id: "friends", label: "Connections", icon: "👥" },
                     ].map((tab) => (
                       <button
                         key={tab.id}
@@ -363,7 +343,7 @@ export function ShowcaseEditor({
                           <Textarea
                             name="profileDescription"
                             defaultValue={profileDescription}
-                            placeholder="Tell others about yourself and your gaming interests"
+                            placeholder="Tell others about yourself"
                             rows={3}
                           />
                         </div>
@@ -382,13 +362,13 @@ export function ShowcaseEditor({
                                 }}
                                 className="flex-1"
                               />
-                              <Button type="button" variant="outline" size="sm" className="gap-1 bg-transparent">
+                              <Button type="button" variant="outline" size="sm">
                                 <Upload className="h-3 w-3" />
                                 Upload
                               </Button>
                             </div>
                             {uploadedProfilePicture && (
-                              <div className="flex items-center gap-2 text-sm text-green-400">
+                              <div className="flex items-center gap-2 text-sm text-green-600">
                                 <ImageIcon className="h-4 w-4" />
                                 Profile picture uploaded successfully
                               </div>
@@ -455,7 +435,7 @@ export function ShowcaseEditor({
                                 <Input name="description" placeholder="Enter description (optional)" />
                               </div>
                               <div>
-                                <Label htmlFor="content">{newItemType === "text" ? "Content" : "Content"}</Label>
+                                <Label htmlFor="content">Content</Label>
                                 {newItemType === "text" ? (
                                   <Textarea name="content" placeholder="Enter your text content" required />
                                 ) : (
@@ -472,12 +452,7 @@ export function ShowcaseEditor({
                                         }}
                                         className="flex-1"
                                       />
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="gap-1 bg-transparent"
-                                      >
+                                      <Button type="button" variant="outline" size="sm">
                                         <Upload className="h-3 w-3" />
                                         Upload
                                       </Button>
@@ -553,7 +528,7 @@ export function ShowcaseEditor({
                                 }}
                                 className="flex-1"
                               />
-                              <Button type="button" variant="outline" size="sm" className="gap-1 bg-transparent">
+                              <Button type="button" variant="outline" size="sm">
                                 <Upload className="h-3 w-3" />
                                 Upload
                               </Button>
@@ -658,7 +633,7 @@ export function ShowcaseEditor({
                                 }}
                                 className="flex-1"
                               />
-                              <Button type="button" variant="outline" size="sm" className="gap-1 bg-transparent">
+                              <Button type="button" variant="outline" size="sm">
                                 <Upload className="h-3 w-3" />
                               </Button>
                             </div>
@@ -737,71 +712,6 @@ export function ShowcaseEditor({
                       </div>
                     </div>
                   )}
-
-                  {activeTab === "friends" && (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold">Manage Connections</h3>
-                        <Badge variant="outline">{friends.length} connections</Badge>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Enter connection's name"
-                          value={newFriendName}
-                          onChange={(e) => setNewFriendName(e.target.value)}
-                          onKeyDown={(e) => e.key === "Enter" && handleAddFriend()}
-                        />
-                        <Button onClick={handleAddFriend} disabled={!newFriendName.trim()}>
-                          Add Connection
-                        </Button>
-                      </div>
-
-                      <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {friends.map((friend) => (
-                          <Card key={friend.id} className="p-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="relative">
-                                  <img
-                                    src={friend.avatar || "/placeholder.svg"}
-                                    alt={friend.name}
-                                    className="w-8 h-8 rounded-full object-cover"
-                                  />
-                                  <div
-                                    className={`absolute -bottom-1 -right-1 w-2 h-2 rounded-full border border-background ${
-                                      friend.status === "online"
-                                        ? "bg-green-500"
-                                        : friend.status === "away"
-                                          ? "bg-yellow-500"
-                                          : "bg-gray-500"
-                                    }`}
-                                  />
-                                </div>
-                                <div>
-                                  <p className="font-medium text-sm">{friend.name}</p>
-                                  <p className="text-xs text-muted-foreground capitalize">{friend.status}</p>
-                                </div>
-                              </div>
-                              <div className="flex gap-1">
-                                <Button size="sm" variant="ghost" onClick={() => handleToggleFriendStatus(friend.id)}>
-                                  Toggle Status
-                                </Button>
-                                <Button size="sm" variant="ghost" onClick={() => handleRemoveFriend(friend.id)}>
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          </Card>
-                        ))}
-                        {friends.length === 0 && (
-                          <p className="text-muted-foreground text-center py-8">
-                            No connections added yet. Add some connections to get started!
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             </DialogContent>
@@ -815,11 +725,7 @@ export function ShowcaseEditor({
             <div
               {...provided.droppableProps}
               ref={provided.innerRef}
-              className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 ${
-                layout === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : ""
-              } ${layout === "masonry" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : ""} ${
-                layout === "spotlight" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : ""
-              }`}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
             >
               {items.map((item, index) => (
                 <Draggable key={item.id} draggableId={item.id} index={index}>
@@ -913,7 +819,7 @@ export function ShowcaseEditor({
                 <Input name="description" defaultValue={editingItem.description} />
               </div>
               <div>
-                <Label htmlFor="content">{editingItemType === "text" ? "Content" : "Content"}</Label>
+                <Label htmlFor="content">Content</Label>
                 {editingItemType === "text" ? (
                   <Textarea
                     name="content"
@@ -935,7 +841,7 @@ export function ShowcaseEditor({
                         }}
                         className="flex-1"
                       />
-                      <Button type="button" variant="outline" size="sm" className="gap-1 bg-transparent">
+                      <Button type="button" variant="outline" size="sm">
                         <Upload className="h-3 w-3" />
                         Upload
                       </Button>
@@ -943,22 +849,19 @@ export function ShowcaseEditor({
                     {editUploadedFile && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         {editingItemType === "image" ? <ImageIcon className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                        New {editingItemType} uploaded
+                        {editingItemType === "image" ? "Image" : "Video"} uploaded
                       </div>
                     )}
-                    <div className="text-xs text-muted-foreground">
-                      Or describe the {editingItemType} below for placeholder generation
-                    </div>
                     <Input
                       name="content"
-                      defaultValue={editingItem.type !== "text" ? "" : ""}
                       placeholder={`Describe the ${editingItemType} for placeholder generation`}
+                      defaultValue={editingItem.type !== "text" ? editingItem.content : ""}
                     />
                   </div>
                 )}
               </div>
               <Button type="submit" className="w-full">
-                Save Changes
+                Update Item
               </Button>
             </form>
           </DialogContent>
