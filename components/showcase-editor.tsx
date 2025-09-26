@@ -103,13 +103,19 @@ export function ShowcaseEditor({
   const [savedPresets, setSavedPresets] = useState<any[]>([])
 
   const [isMounted, setIsMounted] = useState(false)
+  const [dragEnabled, setDragEnabled] = useState(false)
 
   useEffect(() => {
     setIsMounted(true)
+    const timer = setTimeout(() => {
+      setDragEnabled(true)
+      console.log("[v0] Drag and drop initialized for cross-environment compatibility")
+    }, 100)
+
     const presets = JSON.parse(localStorage.getItem("profilePresets") || "[]")
     setSavedPresets(presets)
 
-    console.log("[v0] Drag and drop initialized for v0 environment")
+    return () => clearTimeout(timer)
   }, [])
 
   const handleLoadPreset = (preset: any) => {
@@ -923,7 +929,7 @@ export function ShowcaseEditor({
         </div>
       </div>
 
-      {isMounted ? (
+      {isMounted && dragEnabled ? (
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="showcase-items">
             {(provided) => (
@@ -945,11 +951,19 @@ export function ShowcaseEditor({
                               : "md:col-span-2 lg:col-span-3"
                             : ""
                         }`}
+                        style={{
+                          ...provided.draggableProps.style,
+                          touchAction: "manipulation",
+                        }}
                       >
                         <CardHeader className="pb-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
+                              <div
+                                {...provided.dragHandleProps}
+                                className="cursor-grab active:cursor-grabbing"
+                                style={{ touchAction: "none" }}
+                              >
                                 <GripVertical className="h-4 w-4 text-muted-foreground" />
                               </div>
                               {item.size === "long" && (
@@ -1002,7 +1016,7 @@ export function ShowcaseEditor({
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <GripVertical className="h-4 w-4 text-muted-foreground" />
+                    <GripVertical className="h-4 w-4 text-muted-foreground opacity-50" />
                     {item.size === "long" && (
                       <Badge variant="outline" className="text-xs">
                         Long

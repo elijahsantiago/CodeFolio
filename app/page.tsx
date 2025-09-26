@@ -121,6 +121,15 @@ export default function HomePage() {
   }, [user, authLoading, router])
 
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get("discover") === "true") {
+      setShowSearch(true)
+      // Clean up the URL
+      window.history.replaceState({}, "", "/")
+    }
+  }, [])
+
+  useEffect(() => {
     if (profile) {
       setCurrentLayout(profile.layout)
       setBackgroundColor(profile.backgroundColor)

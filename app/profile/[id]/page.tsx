@@ -102,9 +102,9 @@ export default function ProfileViewPage() {
     <div className="min-h-screen" style={pageBackgroundStyle}>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
-          <Button onClick={() => router.back()} variant="outline" size="sm" className="gap-2">
+          <Button onClick={() => router.push("/?discover=true")} variant="outline" size="sm" className="gap-2">
             <ArrowLeft className="h-4 w-4" />
-            Back
+            Back to Discover
           </Button>
         </div>
 
