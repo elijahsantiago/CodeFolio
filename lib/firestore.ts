@@ -375,17 +375,17 @@ function generateSearchKeywords(profileName: string, profileDescription: string)
 // Delete user profile
 export async function deleteUserProfile(userId: string): Promise<void> {
   if (!isFirebaseConfigured()) {
-    console.warn("Firebase not configured, skipping profile deletion")
+    console.warn("[v0] Firebase not configured, skipping profile deletion")
     return
   }
 
   if (!db) {
-    console.warn("Firestore database not initialized")
+    console.warn("[v0] Firestore database not initialized")
     return
   }
 
   if (!userId) {
-    console.warn("No user ID provided")
+    console.warn("[v0] No user ID provided")
     return
   }
 
@@ -400,7 +400,77 @@ export async function deleteUserProfile(userId: string): Promise<void> {
       console.warn("Firestore permission denied for profile deletion - check security rules")
       return
     }
-    console.error("Error deleting profile:", error)
+    console.error("[v0] Error deleting profile:", error)
+    throw error
+  }
+}
+
+// Admin function to delete any user's profile
+export async function adminDeleteProfile(adminEmail: string, targetUserId: string): Promise<void> {
+  if (adminEmail !== "e.santiago.e1@gmail.com" && adminEmail !== "gabeasosa@gmail.com") {
+    throw new Error("Unauthorized: Admin access required")
+  }
+
+  if (!isFirebaseConfigured()) {
+    console.warn("[v0] Firebase not configured, skipping profile deletion")
+    return
+  }
+
+  if (!db) {
+    console.warn("[v0] Firestore database not initialized")
+    return
+  }
+
+  try {
+    console.log("[v0] Admin deleting profile:", targetUserId)
+    const profileRef = doc(db, "profiles", targetUserId)
+    await updateDoc(profileRef, {
+      isPublic: false,
+      updatedAt: serverTimestamp(),
+    })
+    console.log("[v0] Profile deleted successfully by admin")
+  } catch (error: any) {
+    console.error("[v0] Error deleting profile:", error)
+    throw error
+  }
+}
+
+// Admin function to delete any user's showcase item
+export async function adminDeleteShowcaseItem(adminEmail: string, targetUserId: string, itemId: string): Promise<void> {
+  if (adminEmail !== "e.santiago.e1@gmail.com" && adminEmail !== "gabeasosa@gmail.com") {
+    throw new Error("Unauthorized: Admin access required")
+  }
+
+  if (!isFirebaseConfigured()) {
+    console.warn("[v0] Firebase not configured, skipping item deletion")
+    return
+  }
+
+  if (!db) {
+    console.warn("[v0] Firestore database not initialized")
+    return
+  }
+
+  try {
+    console.log("[v0] Admin deleting showcase item:", itemId, "from user:", targetUserId)
+    const profileRef = doc(db, "profiles", targetUserId)
+    const profileSnap = await getDoc(profileRef)
+
+    if (!profileSnap.exists()) {
+      console.warn("[v0] Profile not found")
+      return
+    }
+
+    const profile = profileSnap.data() as UserProfile
+    const updatedItems = profile.showcaseItems.filter((item) => item.id !== itemId)
+
+    await updateDoc(profileRef, {
+      showcaseItems: updatedItems,
+      updatedAt: serverTimestamp(),
+    })
+    console.log("[v0] Showcase item deleted successfully by admin")
+  } catch (error: any) {
+    console.error("[v0] Error deleting showcase item:", error)
     throw error
   }
 }

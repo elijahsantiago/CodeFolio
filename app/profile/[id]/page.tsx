@@ -90,15 +90,18 @@ export default function ProfileViewPage() {
         }
       } else if (requestSent) {
         // Cancel request
-        await cancelConnectionRequest(user.uid, profile.userId)
         setRequestSent(false)
+        await cancelConnectionRequest(user.uid, profile.userId)
       } else {
         // Send connection request
-        await sendConnectionRequest(user.uid, currentUserProfile, profile.userId)
         setRequestSent(true)
+        await sendConnectionRequest(user.uid, currentUserProfile, profile.userId)
       }
     } catch (error) {
       console.error("Error toggling connection:", error)
+      if (!isConnected && requestSent) {
+        setRequestSent(false)
+      }
     } finally {
       setConnectLoading(false)
     }

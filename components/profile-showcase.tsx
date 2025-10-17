@@ -150,7 +150,7 @@ export function ProfileShowcase({
     }
   }
 
-  const isAdmin = userEmail === "e.santiago.e1@gmail.com"
+  const isAdmin = userEmail === "e.santiago.e1@gmail.com" || userEmail === "gabeasosa@gmail.com"
 
   const getProfileLayout = () => {
     const profileBoxStyle = {
@@ -272,9 +272,12 @@ export function ProfileShowcase({
                 <div className="flex items-center gap-2 mb-2">
                   <h1 className="text-3xl font-bold">{profileName || "Profile Showcase"}</h1>
                   {isAdmin && (
-                    <div className="flex items-center gap-1 px-2 py-1 bg-yellow-500/20 border border-yellow-500/30 rounded-md">
-                      <Shield className="h-4 w-4 text-yellow-600" />
-                      <span className="text-xs font-semibold text-yellow-600">ADMIN</span>
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 rounded-lg blur-md opacity-75 animate-pulse" />
+                      <div className="relative flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 rounded-lg shadow-lg">
+                        <Shield className="h-4 w-4 text-white drop-shadow-md" />
+                        <span className="text-xs font-bold text-white drop-shadow-md tracking-wide">ADMIN</span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -417,13 +420,7 @@ export function ProfileShowcase({
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (!focusedItem) return
-    if (e.key === "ArrowRight") {
-      e.preventDefault()
-      navigateToNextItem()
-    } else if (e.key === "ArrowLeft") {
-      e.preventDefault()
-      navigateToPreviousItem()
-    } else if (e.key === "Escape") {
+    if (e.key === "Escape") {
       setFocusedItem(null)
     }
   }
@@ -433,7 +430,7 @@ export function ProfileShowcase({
       window.addEventListener("keydown", handleKeyDown)
       return () => window.removeEventListener("keydown", handleKeyDown)
     }
-  }, [focusedItem])
+  }, [focusedItem, items])
 
   return (
     <>
@@ -520,72 +517,32 @@ export function ProfileShowcase({
 
       {renderConnectionsModal()}
 
+      <Dialog open={showResumeModal} onOpenChange={setShowResumeModal}>
+        <DialogContent className="max-w-[90vw] max-h-[95vh] overflow-hidden p-0">
+          <div className="p-6">
+            <h2 className="text-2xl font-bold mb-4">Resume</h2>
+            {resumeFile ? (
+              <div className="bg-background rounded-xl border shadow-inner overflow-hidden">
+                <iframe
+                  src={resumeFile}
+                  className="w-full h-[80vh]"
+                  title="Resume Full Screen"
+                  style={{ border: "none" }}
+                />
+              </div>
+            ) : (
+              <div className="bg-background rounded-xl border p-16 text-center">
+                <p className="text-muted-foreground">No resume available</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!focusedItem} onOpenChange={() => setFocusedItem(null)}>
-        {focusedItem && items.length > 1 && (
-          <>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="fixed left-[240px] top-1/2 -translate-y-1/2 z-[80] bg-white hover:bg-gray-100 text-black h-20 w-20 rounded-full shadow-2xl border-4 border-gray-300 backdrop-blur-sm transition-transform hover:scale-110"
-              onClick={(e) => {
-                e.stopPropagation()
-                e.preventDefault()
-                navigateToPreviousItem()
-              }}
-              onPointerDown={(e) => {
-                e.stopPropagation()
-              }}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="40"
-                height="40"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </Button>
-
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="fixed right-[240px] top-1/2 -translate-y-1/2 z-[80] bg-white hover:bg-gray-100 text-black h-20 w-20 rounded-full shadow-2xl border-4 border-gray-300 backdrop-blur-sm transition-transform hover:scale-110"
-              onClick={(e) => {
-                e.stopPropagation()
-                e.preventDefault()
-                navigateToNextItem()
-              }}
-              onPointerDown={(e) => {
-                e.stopPropagation()
-              }}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="40"
-                height="40"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </Button>
-          </>
-        )}
-
         <DialogContent className="max-w-[75vw] max-h-[95vh] overflow-hidden p-0">
           {focusedItem && (
-            <div className="p-12 overflow-y-auto max-h-[95vh]">
+            <div className="p-12 overflow-y-auto max-h-[95vh] relative">
               <div className="mb-6">
                 <h2 className="text-3xl font-bold mb-2">{focusedItem.title}</h2>
                 {focusedItem.description && <p className="text-muted-foreground text-lg">{focusedItem.description}</p>}
