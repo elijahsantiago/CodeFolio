@@ -3,18 +3,32 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Loader2, AlertCircle } from "lucide-react"
+import { ArrowLeft, Loader2, AlertCircle, UserPlus, UserCheck } from "lucide-react"
 import { ProfileShowcase } from "@/components/profile-showcase"
-import { getUserProfile, type UserProfile } from "@/lib/firestore"
+import {
+  getUserProfile,
+  sendConnectionRequest,
+  cancelConnectionRequest,
+  removeConnection,
+  hasPendingRequest,
+  type UserProfile,
+} from "@/lib/firestore"
 import { isFirebaseConfigured } from "@/lib/firebase"
+import { useAuth } from "@/hooks/use-auth"
+import { useProfile } from "@/hooks/use-profile"
 
 export default function ProfileViewPage() {
   const params = useParams()
   const router = useRouter()
+  const { user } = useAuth()
+  const { profile: currentUserProfile, updateProfile } = useProfile()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [firebaseAvailable, setFirebaseAvailable] = useState(false)
+  const [isConnected, setIsConnected] = useState(false)
+  const [requestSent, setRequestSent] = useState(false)
+  const [connectLoading, setConnectLoading] = useState(false)
 
   useEffect(() => {
     setFirebaseAvailable(isFirebaseConfigured())
@@ -26,8 +40,10 @@ export default function ProfileViewPage() {
     async function loadProfile() {
       try {
         setLoading(true)
+        console.log("[v0] Loading profile for user:", params.id)
         const profileData = await getUserProfile(params.id as string)
         if (profileData && profileData.isPublic) {
+          console.log("[v0] Profile loaded successfully")
           setProfile(profileData)
         } else {
           setError("Profile not found or not public")
@@ -42,6 +58,51 @@ export default function ProfileViewPage() {
 
     loadProfile()
   }, [firebaseAvailable, params.id])
+
+  useEffect(() => {
+    if (currentUserProfile && profile && user) {
+      const connections = currentUserProfile.connections || []
+      setIsConnected(connections.some((conn) => conn.userId === profile.userId))
+
+      // Check if request was sent using the new hasPendingRequest function
+      hasPendingRequest(user.uid, profile.userId).then((hasPending) => {
+        setRequestSent(hasPending)
+      })
+    }
+  }, [currentUserProfile, profile, user])
+
+  const handleConnectionToggle = async () => {
+    if (!user || !currentUserProfile || !profile) return
+
+    try {
+      setConnectLoading(true)
+      console.log("[v0] Sending connection request to:", profile.userId)
+
+      if (isConnected) {
+        // Remove connection
+        await removeConnection(user.uid, profile.userId)
+        setIsConnected(false)
+        if (updateProfile) {
+          const updatedConnections = (currentUserProfile.connections || []).filter(
+            (conn) => conn.userId !== profile.userId,
+          )
+          await updateProfile({ connections: updatedConnections })
+        }
+      } else if (requestSent) {
+        // Cancel request
+        await cancelConnectionRequest(user.uid, profile.userId)
+        setRequestSent(false)
+      } else {
+        // Send connection request
+        await sendConnectionRequest(user.uid, currentUserProfile, profile.userId)
+        setRequestSent(true)
+      }
+    } catch (error) {
+      console.error("Error toggling connection:", error)
+    } finally {
+      setConnectLoading(false)
+    }
+  }
 
   if (!firebaseAvailable) {
     return (
@@ -98,19 +159,49 @@ export default function ProfileViewPage() {
     }),
   }
 
+  const isOwnProfile = user && user.uid === profile.userId
+
   return (
     <div className="min-h-screen" style={pageBackgroundStyle}>
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-6">
+        <div className="mb-6 flex items-center justify-between">
           <Button onClick={() => router.push("/?discover=true")} variant="outline" size="sm" className="gap-2">
             <ArrowLeft className="h-4 w-4" />
             Back to Discover
           </Button>
+
+          {!isOwnProfile && user && (
+            <Button
+              onClick={handleConnectionToggle}
+              disabled={connectLoading}
+              variant={isConnected ? "outline" : "default"}
+              size="sm"
+              className="gap-2"
+            >
+              {connectLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isConnected ? (
+                <>
+                  <UserCheck className="h-4 w-4" />
+                  Connected
+                </>
+              ) : requestSent ? (
+                <>
+                  <UserPlus className="h-4 w-4" />
+                  Request Sent
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-4 w-4" />
+                  Send Request
+                </>
+              )}
+            </Button>
+          )}
         </div>
 
         <div className="mb-4">
           <h1 className="text-2xl font-bold">{profile.profileName}'s Portfolio</h1>
-          <p className="text-muted-foreground">{profile.email}</p>
         </div>
 
         <ProfileShowcase
@@ -119,12 +210,24 @@ export default function ProfileViewPage() {
           profileName={profile.profileName}
           profileDescription={profile.profileDescription}
           layout={profile.layout}
-          backgroundColor="transparent" // Set to transparent since page background handles it
-          backgroundImage="" // Set to empty since page background handles it
+          backgroundColor="transparent"
+          backgroundImage=""
           contentBoxColor={profile.contentBoxColor}
           contentBoxTrimColor={profile.contentBoxTrimColor}
-          friends={[]} // Don't show friends for other users
+          profileInfoColor={profile.profileInfoColor}
+          profileInfoTrimColor={profile.profileInfoTrimColor}
+          textColor={profile.textColor}
+          friends={
+            profile.connections?.map((conn) => ({
+              id: conn.userId,
+              name: conn.profileName,
+              avatar: conn.profilePicture,
+              status: "offline" as const,
+              lastSeen: new Date(conn.connectedAt).toLocaleDateString(),
+            })) || []
+          }
           resumeFile={profile.resumeFile}
+          isViewOnly={true}
         />
       </div>
     </div>

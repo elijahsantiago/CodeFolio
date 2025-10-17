@@ -6,9 +6,10 @@ import { ProfileShowcase } from "@/components/profile-showcase"
 import { ShowcaseEditor } from "@/components/showcase-editor"
 import { ProfileSearch } from "@/components/profile-search"
 import { Button } from "@/components/ui/button"
-import { Edit, Eye, LogOut, User, Loader2 } from "lucide-react"
+import { Edit, Eye, LogOut, Loader2 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useProfile } from "@/hooks/use-profile"
+import { NotificationsPanel } from "@/components/notifications-panel"
 
 export default function HomePage() {
   const [isEditing, setIsEditing] = useState(false)
@@ -22,6 +23,9 @@ export default function HomePage() {
   const [backgroundImage, setBackgroundImage] = useState("")
   const [contentBoxColor, setContentBoxColor] = useState("#ffffff")
   const [contentBoxTrimColor, setContentBoxTrimColor] = useState("#6b7280")
+  const [profileInfoColor, setProfileInfoColor] = useState("#ffffff")
+  const [profileInfoTrimColor, setProfileInfoTrimColor] = useState("#6b7280")
+  const [textColor, setTextColor] = useState("#000000")
   const [currentTheme, setCurrentTheme] = useState<"light-business" | "dark-business" | "business-casual">(
     "light-business",
   )
@@ -124,7 +128,6 @@ export default function HomePage() {
     const urlParams = new URLSearchParams(window.location.search)
     if (urlParams.get("discover") === "true") {
       setShowSearch(true)
-      // Clean up the URL
       window.history.replaceState({}, "", "/")
     }
   }, [])
@@ -136,6 +139,9 @@ export default function HomePage() {
       setBackgroundImage(profile.backgroundImage)
       setContentBoxColor(profile.contentBoxColor)
       setContentBoxTrimColor(profile.contentBoxTrimColor)
+      setProfileInfoColor(profile.profileInfoColor || "#ffffff")
+      setProfileInfoTrimColor(profile.profileInfoTrimColor || "#6b7280")
+      setTextColor(profile.textColor || "#000000")
       setCurrentTheme(profile.theme)
       setResumeFile(profile.resumeFile)
       setProfileData({
@@ -147,6 +153,18 @@ export default function HomePage() {
     }
   }, [profile, user])
 
+  useEffect(() => {
+    if (profile && profile.connections) {
+      const friendsFromConnections = profile.connections.map((conn) => ({
+        id: conn.userId,
+        name: conn.profileName,
+        avatar: conn.profilePicture,
+        status: "offline" as const,
+      }))
+      setFriends(friendsFromConnections)
+    }
+  }, [profile])
+
   const handleProfileUpdate = async (updates: any) => {
     if (profile && updateProfile) {
       try {
@@ -155,6 +173,10 @@ export default function HomePage() {
         console.error("Error updating profile:", error)
       }
     }
+  }
+
+  const handleFriendsChange = async (updatedFriends: any[]) => {
+    setFriends(updatedFriends)
   }
 
   const handleLogout = async () => {
@@ -181,23 +203,85 @@ export default function HomePage() {
     return null
   }
 
+  function isDark(color: string) {
+    const hex = color.replace("#", "")
+    const r = Number.parseInt(hex.substring(0, 2), 16)
+    const g = Number.parseInt(hex.substring(2, 4), 16)
+    const b = Number.parseInt(hex.substring(4, 6), 16)
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000
+    return brightness < 128
+  }
+
+  const buttonStyle = {
+    backgroundColor: isDark(backgroundColor) ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
+    color: textColor,
+    borderColor: isDark(backgroundColor) ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.1)",
+  }
+
+  const activeButtonStyle = {
+    backgroundColor: isDark(backgroundColor) ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.1)",
+    color: textColor,
+    borderColor: isDark(backgroundColor) ? "#ffffff40" : "#00000020",
+  }
+
   return (
-    <div className={`min-h-screen bg-background ${currentTheme}`}>
+    <div className={`min-h-screen ${currentTheme}`} style={{ backgroundColor }}>
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-6 flex items-center justify-between">
+        <div
+          className="mb-8 flex items-center justify-between sticky top-4 z-40 backdrop-blur-md py-4 px-8 rounded-2xl border-2 shadow-lg"
+          style={{
+            backgroundColor: `${backgroundColor}ee`,
+            color: textColor,
+            borderColor: isDark(backgroundColor) ? "#ffffff40" : "#00000020",
+          }}
+        >
           <div className="flex items-center gap-4">
-            <Button variant={showSearch ? "default" : "outline"} size="sm" onClick={() => setShowSearch(!showSearch)}>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => {
+                setShowSearch(!showSearch)
+              }}
+              className="font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
+              style={showSearch ? activeButtonStyle : buttonStyle}
+            >
               {showSearch ? "My Profile" : "Discover Profiles"}
             </Button>
+
+            {!showSearch && (
+              <Button
+                onClick={() => setIsEditing(!isEditing)}
+                variant="outline"
+                size="lg"
+                className="gap-2 font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md bg-transparent"
+                style={isEditing ? activeButtonStyle : buttonStyle}
+              >
+                {isEditing ? (
+                  <>
+                    <Eye className="h-5 w-5" />
+                    Preview
+                  </>
+                ) : (
+                  <>
+                    <Edit className="h-5 w-5" />
+                    Edit Profile
+                  </>
+                )}
+              </Button>
+            )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 text-sm">
-              <User className="h-4 w-4" />
-              <span>{user.email}</span>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
+          <div className="flex items-center gap-3">
+            <NotificationsPanel buttonStyle={buttonStyle} />
+
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handleLogout}
+              className="gap-2 rounded-xl shadow-sm font-semibold transition-all duration-200 hover:scale-105 hover:shadow-md bg-transparent"
+              style={buttonStyle}
+            >
+              <LogOut className="h-5 w-5" />
               Logout
             </Button>
           </div>
@@ -207,24 +291,6 @@ export default function HomePage() {
           <ProfileSearch />
         ) : (
           <>
-            <div className="fixed top-4 right-4 z-50">
-              <Button
-                onClick={() => setIsEditing(!isEditing)}
-                variant={isEditing ? "secondary" : "default"}
-                size="sm"
-                className="gap-2 shadow-lg bg-primary text-primary-foreground hover:bg-primary/90 border-2 border-primary-foreground/20 transition-all duration-300"
-              >
-                {isEditing ? (
-                  <>
-                    <Eye className="h-4 w-4" />
-                    Preview
-                  </>
-                ) : (
-                  <Edit className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-
             {isEditing ? (
               <ShowcaseEditor
                 items={showcaseItems}
@@ -264,8 +330,23 @@ export default function HomePage() {
                   setContentBoxTrimColor(color)
                   handleProfileUpdate({ contentBoxTrimColor: color })
                 }}
+                profileInfoColor={profileInfoColor}
+                onProfileInfoColorChange={(color) => {
+                  setProfileInfoColor(color)
+                  handleProfileUpdate({ profileInfoColor: color })
+                }}
+                profileInfoTrimColor={profileInfoTrimColor}
+                onProfileInfoTrimColorChange={(color) => {
+                  setProfileInfoTrimColor(color)
+                  handleProfileUpdate({ profileInfoTrimColor: color })
+                }}
+                textColor={textColor}
+                onTextColorChange={(color) => {
+                  setTextColor(color)
+                  handleProfileUpdate({ textColor: color })
+                }}
                 friends={friends}
-                onFriendsChange={setFriends}
+                onFriendsChange={handleFriendsChange}
                 theme={currentTheme}
                 onThemeChange={(theme) => {
                   setCurrentTheme(theme)
@@ -276,6 +357,7 @@ export default function HomePage() {
                   setResumeFile(file)
                   handleProfileUpdate({ resumeFile: file })
                 }}
+                userEmail={user?.email || ""}
               />
             ) : (
               <ProfileShowcase
@@ -288,6 +370,9 @@ export default function HomePage() {
                 backgroundImage={backgroundImage}
                 contentBoxColor={contentBoxColor}
                 contentBoxTrimColor={contentBoxTrimColor}
+                profileInfoColor={profileInfoColor}
+                profileInfoTrimColor={profileInfoTrimColor}
+                textColor={textColor}
                 friends={friends}
                 resumeFile={resumeFile}
               />

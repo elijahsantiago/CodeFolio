@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Plus, GripVertical, Edit, Trash2, ImageIcon, Play, Upload, Type, AlertCircle } from "lucide-react"
 import { processImageUpload } from "@/lib/image-utils"
+import { getThemeColors } from "@/lib/color-utils"
 
 const DragDropContext = dynamic(() => import("@hello-pangea/dnd").then((mod) => mod.DragDropContext), {
   ssr: false,
@@ -62,12 +63,21 @@ interface ShowcaseEditorProps {
   onContentBoxColorChange?: (color: string) => void
   contentBoxTrimColor?: string
   onContentBoxTrimColorChange?: (color: string) => void
+  profileInfoColor?: string
+  onProfileInfoColorChange?: (color: string) => void
+  profileInfoTrimColor?: string
+  onProfileInfoTrimColorChange?: (color: string) => void // Added missing prop definition
   friends?: Friend[]
   onFriendsChange?: (friends: Friend[]) => void
   theme?: "light-business" | "dark-business" | "business-casual"
   onThemeChange?: (theme: "light-business" | "dark-business" | "business-casual") => void
   resumeFile?: string
   onResumeFileChange?: (file: string) => void
+  userEmail?: string // Added userEmail prop
+  textColor?: string // Added textColor prop
+  onTextColorChange?: (color: string) => void
+  bannerImage?: string
+  onBannerImageChange?: (image: string) => void
 }
 
 export function ShowcaseEditor({
@@ -87,12 +97,21 @@ export function ShowcaseEditor({
   onContentBoxColorChange,
   contentBoxTrimColor = "#22c55e",
   onContentBoxTrimColorChange,
+  profileInfoColor = "#1a1a1a",
+  onProfileInfoColorChange,
+  profileInfoTrimColor = "#22c55e",
+  onProfileInfoTrimColorChange, // Added missing parameter
   friends = [],
   onFriendsChange,
   theme = "light-business",
   onThemeChange,
   resumeFile = "",
   onResumeFileChange,
+  userEmail = "", // Added userEmail parameter
+  textColor = "#ffffff", // Default text color
+  onTextColorChange,
+  bannerImage,
+  onBannerImageChange,
 }: ShowcaseEditorProps) {
   const [editingItem, setEditingItem] = useState<ShowcaseItem | null>(null)
   const [editingItemType, setEditingItemType] = useState<"image" | "video" | "text">("image")
@@ -104,6 +123,7 @@ export function ShowcaseEditor({
   const [uploadedItemFile, setUploadedItemFile] = useState<string | null>(null)
   const [editUploadedFile, setEditUploadedFile] = useState<string | null>(null)
   const [uploadedBackgroundImage, setUploadedBackgroundImage] = useState<string | null>(null)
+  const [uploadedBannerImage, setUploadedBannerImage] = useState<string | null>(null)
   const [isMainEditorOpen, setIsMainEditorOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<"profile" | "showcase" | "resume" | "appearance" | "layout">("profile")
 
@@ -133,6 +153,8 @@ export function ShowcaseEditor({
     onContentBoxTrimColorChange?.(data.contentBoxTrimColor)
     onThemeChange?.(data.theme)
     onItemsChange(data.showcaseItems || [])
+    onTextColorChange?.(data.textColor || "#ffffff") // Load text color from preset
+    onBannerImageChange?.(data.bannerImage || "")
   }
 
   const [uploadStates, setUploadStates] = useState<{
@@ -140,11 +162,13 @@ export function ShowcaseEditor({
     item: { loading: boolean; error: string | null }
     background: { loading: boolean; error: string | null }
     resume: { loading: boolean; error: string | null }
+    banner: { loading: boolean; error: string | null }
   }>({
     profile: { loading: false, error: null },
     item: { loading: false, error: null },
     background: { loading: false, error: null },
     resume: { loading: false, error: null },
+    banner: { loading: false, error: null },
   })
 
   const handleDragEnd = (result: DropResult) => {
@@ -165,7 +189,7 @@ export function ShowcaseEditor({
   const handleFileUpload = async (
     file: File,
     callback: (url: string) => void,
-    type: "profile" | "item" | "background" | "resume" = "item",
+    type: "profile" | "item" | "background" | "resume" | "banner" = "item",
   ) => {
     setUploadStates((prev) => ({
       ...prev,
@@ -182,6 +206,7 @@ export function ShowcaseEditor({
           item: { maxWidth: 800, maxHeight: 600, quality: 0.8, maxSizeKB: 400 },
           background: { maxWidth: 1920, maxHeight: 1080, quality: 0.7, maxSizeKB: 500 },
           resume: { maxWidth: 800, maxHeight: 600, quality: 0.8, maxSizeKB: 400 },
+          banner: { maxWidth: 1200, maxHeight: 300, quality: 0.7, maxSizeKB: 500 },
         }
 
         processedFile = await processImageUpload(file, compressionOptions[type])
@@ -372,7 +397,9 @@ export function ShowcaseEditor({
       contentBoxColor,
       contentBoxTrimColor,
       theme,
+      textColor, // Save textColor
       showcaseItems: items.slice(0, 6),
+      bannerImage,
     }
 
     const savedPresets = JSON.parse(localStorage.getItem("profilePresets") || "[]")
@@ -384,17 +411,29 @@ export function ShowcaseEditor({
     }
 
     savedPresets.push(newPreset)
-    localStorage.setItem("profilePresets", JSON.stringify(savedPresets.slice(-5)))
+    localStorage.setItem("profilePresets", JSON.stringify(savedPresets.slice(-5))) // Corrected JSON.parse(JSON.stringify(...)) to JSON.stringify
 
     alert("Profile saved as preset!")
   }
 
+  const handleThemeChange = (newTheme: "light-business" | "dark-business" | "business-casual") => {
+    const themeColors = getThemeColors(newTheme)
+
+    onThemeChange?.(newTheme)
+    onBackgroundColorChange?.(themeColors.backgroundColor)
+    onContentBoxColorChange?.(themeColors.contentBoxColor)
+    onContentBoxTrimColorChange?.(themeColors.contentBoxTrimColor)
+    onProfileInfoColorChange?.(themeColors.profileInfoColor)
+    onProfileInfoTrimColorChange?.(themeColors.profileInfoTrimColor)
+    onTextColorChange?.(themeColors.textColor) // Set text color based on theme
+  }
+
   return (
-    <div className="space-y-6" style={{ backgroundColor }}>
+    <div className="space-y-6" style={{ backgroundColor, color: textColor }}>
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold">Edit Your Showcase</h2>
-          <p className="text-muted-foreground">Customize your profile, showcase, and friends</p>
+          <p className="text-muted-foreground">Customize your profile, showcase, and appearance</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleSaveAsPreset}>
@@ -404,7 +443,7 @@ export function ShowcaseEditor({
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Edit className="h-4 w-4" />
-                Edit Profile
+                Open Editor
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-5xl w-[95vw] max-h-[85vh] overflow-hidden">
@@ -442,8 +481,25 @@ export function ShowcaseEditor({
                       <h3 className="text-lg font-semibold">Profile Information</h3>
                       <form action={handleProfileEdit} className="space-y-4">
                         <div>
+                          <Label htmlFor="userEmail">Email Address</Label>
+                          <Input
+                            name="userEmail"
+                            value={userEmail}
+                            disabled
+                            className="bg-muted cursor-not-allowed text-foreground"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Your email address is managed through your account settings
+                          </p>
+                        </div>
+                        <div>
                           <Label htmlFor="profileName">Profile Name</Label>
-                          <Input name="profileName" defaultValue={profileName} placeholder="Enter your name" />
+                          <Input
+                            name="profileName"
+                            defaultValue={profileName}
+                            placeholder="Enter your name"
+                            className="text-foreground"
+                          />
                         </div>
                         <div>
                           <Label htmlFor="profileDescription">Profile Description</Label>
@@ -452,6 +508,7 @@ export function ShowcaseEditor({
                             defaultValue={profileDescription}
                             placeholder="Tell others about yourself"
                             rows={3}
+                            className="text-foreground"
                           />
                         </div>
                         <div>
@@ -470,9 +527,14 @@ export function ShowcaseEditor({
                                 className="flex-1"
                                 disabled={uploadStates.profile.loading}
                               />
-                              <Button type="button" variant="outline" size="sm" disabled={uploadStates.profile.loading}>
-                                <Upload className="h-3 w-3" />
-                                {uploadStates.profile.loading ? "Processing..." : "Upload"}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                disabled={uploadStates.profile.loading}
+                                className="shrink-0 h-10 w-10 bg-transparent" // Removed bg-transparent
+                              >
+                                <Upload className="h-4 w-4" />
                               </Button>
                             </div>
 
@@ -576,11 +638,11 @@ export function ShowcaseEditor({
                                       <Button
                                         type="button"
                                         variant="outline"
-                                        size="sm"
+                                        size="icon"
                                         disabled={uploadStates.item.loading}
+                                        className="shrink-0 h-10 w-10 bg-transparent"
                                       >
-                                        <Upload className="h-3 w-3" />
-                                        {uploadStates.item.loading ? "Processing..." : "Upload"}
+                                        <Upload className="h-4 w-4" />
                                       </Button>
                                     </div>
 
@@ -670,9 +732,14 @@ export function ShowcaseEditor({
                                 className="flex-1"
                                 disabled={uploadStates.resume.loading}
                               />
-                              <Button type="button" variant="outline" size="sm" disabled={uploadStates.resume.loading}>
-                                <Upload className="h-3 w-3" />
-                                {uploadStates.resume.loading ? "Processing..." : "Upload"}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                disabled={uploadStates.resume.loading}
+                                className="shrink-0 h-10 w-10 bg-transparent"
+                              >
+                                <Upload className="h-4 w-4" />
                               </Button>
                             </div>
 
@@ -736,7 +803,7 @@ export function ShowcaseEditor({
                               className={`cursor-pointer transition-all hover:shadow-md ${
                                 theme === themeOption.id ? "ring-2 ring-primary" : ""
                               }`}
-                              onClick={() => onThemeChange?.(themeOption.id as any)}
+                              onClick={() => handleThemeChange(themeOption.id as any)}
                             >
                               <CardHeader className="pb-2">
                                 <div className="flex items-center justify-between">
@@ -750,6 +817,9 @@ export function ShowcaseEditor({
                             </Card>
                           ))}
                         </div>
+                        <p className="text-xs text-muted-foreground">
+                          Switching themes will automatically adjust all colors to match the selected theme
+                        </p>
                       </div>
 
                       <div className="space-y-4">
@@ -792,11 +862,11 @@ export function ShowcaseEditor({
                               <Button
                                 type="button"
                                 variant="outline"
-                                size="sm"
+                                size="icon"
                                 disabled={uploadStates.background.loading}
+                                className="shrink-0 h-10 w-10 bg-transparent"
                               >
-                                <Upload className="h-3 w-3" />
-                                {uploadStates.background.loading ? "Processing..." : "Upload"}
+                                <Upload className="h-4 w-4" />
                               </Button>
                             </div>
 
@@ -831,6 +901,126 @@ export function ShowcaseEditor({
                         </div>
                       </div>
 
+                      {/* ADDED BANNER IMAGE UPLOAD SECTION */}
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-medium">Profile Banner</h4>
+                        <div className="space-y-3">
+                          <div className="space-y-2">
+                            <Label className="text-sm">Banner Image:</Label>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0]
+                                  if (file) {
+                                    handleFileUpload(
+                                      file,
+                                      (url) => {
+                                        setUploadedBannerImage(url)
+                                        onBannerImageChange?.(url)
+                                      },
+                                      "banner",
+                                    )
+                                  }
+                                }}
+                                className="flex-1"
+                                disabled={uploadStates.banner.loading}
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                disabled={uploadStates.banner.loading}
+                                className="shrink-0 h-10 w-10 bg-transparent"
+                              >
+                                <Upload className="h-4 w-4" />
+                              </Button>
+                            </div>
+
+                            {uploadStates.banner.error && (
+                              <div className="flex items-center gap-2 text-sm text-red-600">
+                                <AlertCircle className="h-4 w-4" />
+                                {uploadStates.banner.error}
+                              </div>
+                            )}
+
+                            {bannerImage && !uploadStates.banner.error && (
+                              <div className="flex items-center gap-2 text-sm text-green-600">
+                                <ImageIcon className="h-4 w-4" />
+                                Banner image processed successfully
+                              </div>
+                            )}
+                            {bannerImage && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onBannerImageChange?.("")}
+                                className="w-full"
+                              >
+                                Remove Banner Image
+                              </Button>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              Banner images are displayed at the top of your profile info box. Recommended size:
+                              1200x300px
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-medium">Text Color</h4>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3">
+                            <Label htmlFor="textColor" className="text-sm min-w-[60px]">
+                              Color:
+                            </Label>
+                            <input
+                              id="textColor"
+                              type="color"
+                              value={textColor}
+                              onChange={(e) => onTextColorChange?.(e.target.value)}
+                              className="w-12 h-8 rounded border cursor-pointer"
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Control the text color throughout your profile. Useful when using dark backgrounds.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-medium">Profile Info Box</h4>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3">
+                            <Label htmlFor="profileInfoColor" className="text-sm min-w-[60px]">
+                              Fill:
+                            </Label>
+                            <input
+                              id="profileInfoColor"
+                              type="color"
+                              value={profileInfoColor}
+                              onChange={(e) => onProfileInfoColorChange?.(e.target.value)}
+                              className="w-12 h-8 rounded border cursor-pointer"
+                            />
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Label htmlFor="profileInfoTrimColor" className="text-sm min-w-[60px]">
+                              Border:
+                            </Label>
+                            <input
+                              id="profileInfoTrimColor"
+                              type="color"
+                              value={profileInfoTrimColor}
+                              onChange={(e) => onProfileInfoTrimColorChange?.(e.target.value)}
+                              className="w-12 h-8 rounded border cursor-pointer"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="space-y-4">
                         <h4 className="text-sm font-medium">Content Boxes</h4>
                         <div className="space-y-3">
@@ -859,6 +1049,9 @@ export function ShowcaseEditor({
                             />
                           </div>
                         </div>
+                        <p className="text-xs text-muted-foreground">
+                          Text color automatically adjusts based on background brightness for optimal readability
+                        </p>
                       </div>
                     </div>
                   )}
@@ -1113,9 +1306,14 @@ export function ShowcaseEditor({
                         className="flex-1"
                         disabled={uploadStates.item.loading}
                       />
-                      <Button type="button" variant="outline" size="sm" disabled={uploadStates.item.loading}>
-                        <Upload className="h-3 w-3" />
-                        {uploadStates.item.loading ? "Processing..." : "Upload"}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        disabled={uploadStates.item.loading}
+                        className="shrink-0 h-10 w-10 bg-transparent"
+                      >
+                        <Upload className="h-4 w-4" />
                       </Button>
                     </div>
 

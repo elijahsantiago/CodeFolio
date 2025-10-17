@@ -8,7 +8,7 @@ export interface ImageCompressionOptions {
 }
 
 export async function compressImage(file: File, options: ImageCompressionOptions = {}): Promise<string> {
-  const { maxWidth = 800, maxHeight = 600, quality = 0.8, maxSizeKB = 500 } = options
+  const { maxWidth = 800, maxHeight = 600, quality = 0.9, maxSizeKB = 500 } = options
 
   return new Promise((resolve, reject) => {
     const canvas = document.createElement("canvas")
@@ -38,9 +38,8 @@ export async function compressImage(file: File, options: ImageCompressionOptions
       // Estimate size in KB (base64 is ~33% larger than binary)
       const estimatedSizeKB = (compressedDataUrl.length * 0.75) / 1024
 
-      // Reduce quality if still too large
-      while (estimatedSizeKB > maxSizeKB && currentQuality > 0.1) {
-        currentQuality -= 0.1
+      while (estimatedSizeKB > maxSizeKB * 1.2 && currentQuality > 0.5) {
+        currentQuality -= 0.05
         compressedDataUrl = canvas.toDataURL("image/jpeg", currentQuality)
         const newEstimatedSizeKB = (compressedDataUrl.length * 0.75) / 1024
         if (newEstimatedSizeKB <= maxSizeKB) break

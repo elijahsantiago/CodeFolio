@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Play, ImageIcon, Type, X, Users } from "lucide-react"
+import { Play, ImageIcon, Type, Users, Shield } from "lucide-react"
+import { getContrastTextColor } from "@/lib/color-utils"
 
 interface ShowcaseItem {
   id: string
@@ -34,8 +34,15 @@ interface ProfileShowcaseProps {
   backgroundImage?: string
   contentBoxColor?: string
   contentBoxTrimColor?: string
+  profileInfoColor?: string
+  profileInfoTrimColor?: string
+  textColor?: string
+  bannerImage?: string
   friends?: Friend[]
   resumeFile?: string
+  isViewOnly?: boolean
+  onViewConnections?: () => void
+  userEmail?: string
 }
 
 export function ProfileShowcase({
@@ -48,13 +55,23 @@ export function ProfileShowcase({
   backgroundImage,
   contentBoxColor = "#ffffff",
   contentBoxTrimColor = "#6b7280",
+  profileInfoColor = "#ffffff",
+  profileInfoTrimColor = "#6b7280",
+  textColor,
+  bannerImage,
   friends = [],
   resumeFile = "",
+  isViewOnly = false,
+  onViewConnections,
+  userEmail = "",
 }: ProfileShowcaseProps) {
   const [focusedItem, setFocusedItem] = useState<ShowcaseItem | null>(null)
   const [showConnections, setShowConnections] = useState(false)
   const [activeTab, setActiveTab] = useState<"showcase" | "resume">("showcase")
   const [showResumeModal, setShowResumeModal] = useState(false)
+  const router = useRouter()
+
+  const computedTextColor = textColor || getContrastTextColor(backgroundColor)
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -69,7 +86,7 @@ export function ProfileShowcase({
     }
   }
 
-  const renderContent = (item: ShowcaseItem, isFocused = false) => {
+  const renderContentItem = (item: ShowcaseItem, isFocused = false) => {
     const imageClasses = isFocused
       ? "w-full max-h-[70vh] object-contain"
       : "w-full h-48 object-cover transition-transform hover:scale-105"
@@ -133,11 +150,40 @@ export function ProfileShowcase({
     }
   }
 
+  const isAdmin = userEmail === "e.santiago.e1@gmail.com"
+
   const getProfileLayout = () => {
+    const profileBoxStyle = {
+      backgroundColor: profileInfoColor,
+      borderColor: profileInfoTrimColor,
+      color: getContrastTextColor(profileInfoColor),
+    }
+
+    const connectionsButton = friends.length > 0 && (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          setShowConnections(true)
+        }}
+        className="gap-2 hover:scale-105 transition-all duration-200 shadow-sm hover:shadow-md font-semibold"
+        style={{
+          backgroundColor:
+            getContrastTextColor(profileInfoColor) === "#ffffff" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)",
+          color: getContrastTextColor(profileInfoColor),
+          borderColor:
+            getContrastTextColor(profileInfoColor) === "#ffffff" ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)",
+        }}
+      >
+        <Users className="h-4 w-4" />
+        <span>{friends.length} Connections</span>
+      </Button>
+    )
+
     switch (layout) {
       case "minimal":
         return (
-          <div className="text-center p-8 bg-card rounded-lg border relative">
+          <div className="text-center p-6 rounded-lg border-2 relative" style={profileBoxStyle}>
             <img
               src={profilePicture || "/placeholder.svg?height=120&width=120&query=professional profile avatar"}
               alt="Profile Picture"
@@ -145,27 +191,15 @@ export function ProfileShowcase({
               style={{ borderColor: contentBoxTrimColor }}
             />
             <h1 className="text-4xl font-bold mb-2">{profileName || "Profile Showcase"}</h1>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            <p className="text-lg max-w-2xl mx-auto">
               {profileDescription || "Welcome to my profile! Check out my showcase below."}
             </p>
-            <div className="absolute top-4 right-4">
-              {friends.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowConnections(true)}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <Users className="h-4 w-4 mr-2" />
-                  {friends.length} Connections
-                </Button>
-              )}
-            </div>
+            {connectionsButton && <div className="absolute top-4 right-4">{connectionsButton}</div>}
           </div>
         )
       case "grid":
         return (
-          <div className="bg-card rounded-lg border p-4 relative">
+          <div className="rounded-lg border-2 p-4 relative" style={profileBoxStyle}>
             <div className="flex items-center gap-4">
               <img
                 src={profilePicture || "/placeholder.svg?height=120&width=120&query=professional profile avatar"}
@@ -174,28 +208,16 @@ export function ProfileShowcase({
                 style={{ borderColor: contentBoxTrimColor }}
               />
               <div>
-                <h1 className="text-2xl font-bold">{profileName || "Profile Showcase"}</h1>
-                <p className="text-muted-foreground text-sm">{profileDescription || "Welcome to my profile!"}</p>
+                <h1 className="text-2xl font-bold mb-2">{profileName || "Profile Showcase"}</h1>
+                <p className="text-sm mb-2">{profileDescription || "Welcome to my profile!"}</p>
               </div>
             </div>
-            <div className="absolute top-4 right-4">
-              {friends.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowConnections(true)}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <Users className="h-4 w-4 mr-1" />
-                  {friends.length}
-                </Button>
-              )}
-            </div>
+            {connectionsButton && <div className="absolute top-4 right-4">{connectionsButton}</div>}
           </div>
         )
       case "masonry":
         return (
-          <div className="bg-gradient-to-r from-card to-card/50 rounded-lg border p-6 mb-8 relative">
+          <div className="rounded-lg border-2 p-6 mb-8 relative" style={profileBoxStyle}>
             <div className="flex items-start gap-6">
               <img
                 src={profilePicture || "/placeholder.svg?height=120&width=120&query=professional profile avatar"}
@@ -205,29 +227,17 @@ export function ProfileShowcase({
               />
               <div className="flex-1">
                 <h1 className="text-3xl font-bold mb-2">{profileName || "Profile Showcase"}</h1>
-                <p className="text-muted-foreground leading-relaxed">
+                <p className="leading-relaxed mb-2">
                   {profileDescription || "Welcome to my profile! Check out my showcase below."}
                 </p>
               </div>
             </div>
-            <div className="absolute top-4 right-4">
-              {friends.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowConnections(true)}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <Users className="h-4 w-4 mr-2" />
-                  {friends.length}
-                </Button>
-              )}
-            </div>
+            {connectionsButton && <div className="absolute top-4 right-4">{connectionsButton}</div>}
           </div>
         )
       case "spotlight":
         return (
-          <div className="relative bg-card rounded-lg border overflow-hidden">
+          <div className="relative rounded-lg border-2 overflow-hidden" style={profileBoxStyle}>
             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent" />
             <div className="relative p-8 text-center">
               <img
@@ -237,54 +247,50 @@ export function ProfileShowcase({
                 style={{ borderColor: contentBoxTrimColor }}
               />
               <h1 className="text-5xl font-bold mb-4">{profileName || "Profile Showcase"}</h1>
-              <p className="text-muted-foreground text-xl max-w-3xl mx-auto leading-relaxed">
+              <p className="text-xl max-w-3xl mx-auto leading-relaxed mb-2">
                 {profileDescription || "Welcome to my profile! Check out my showcase below."}
               </p>
             </div>
-            <div className="absolute top-4 right-4">
-              {friends.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowConnections(true)}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <Users className="h-4 w-4 mr-2" />
-                  {friends.length}
-                </Button>
-              )}
-            </div>
+            {connectionsButton && <div className="absolute top-4 right-4">{connectionsButton}</div>}
           </div>
         )
       default:
         return (
-          <div className="flex items-start justify-between gap-6 p-6 bg-card rounded-lg border relative">
-            <div className="flex-1">
-              <div className="flex items-center gap-4 mb-2">
-                <h1 className="text-3xl font-bold">{profileName || "Profile Showcase"}</h1>
-                {friends.length > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowConnections(true)}
-                    className="text-muted-foreground hover:text-foreground h-6 px-2"
-                  >
-                    <Users className="h-3 w-3 mr-1" />
-                    <span className="text-xs">{friends.length}</span>
-                  </Button>
-                )}
+          <div className="rounded-lg border-2 overflow-hidden relative" style={profileBoxStyle}>
+            {bannerImage && (
+              <div className="h-32 w-full relative">
+                <img
+                  src={bannerImage || "/placeholder.svg"}
+                  alt="Profile Banner"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20" />
               </div>
-              <p className="text-muted-foreground leading-relaxed">
-                {profileDescription || "Welcome to my profile! Check out my showcase below."}
-              </p>
-            </div>
-            <div className="flex-shrink-0">
-              <img
-                src={profilePicture || "/placeholder.svg?height=120&width=120&query=professional profile avatar"}
-                alt="Profile Picture"
-                className="w-24 h-24 rounded-full object-cover border-2"
-                style={{ borderColor: contentBoxTrimColor }}
-              />
+            )}
+            <div className="flex items-start justify-between gap-4 p-4 relative">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <h1 className="text-3xl font-bold">{profileName || "Profile Showcase"}</h1>
+                  {isAdmin && (
+                    <div className="flex items-center gap-1 px-2 py-1 bg-yellow-500/20 border border-yellow-500/30 rounded-md">
+                      <Shield className="h-4 w-4 text-yellow-600" />
+                      <span className="text-xs font-semibold text-yellow-600">ADMIN</span>
+                    </div>
+                  )}
+                </div>
+                <p className="leading-relaxed">
+                  {profileDescription || "Welcome to my profile! Check out my showcase below."}
+                </p>
+                {connectionsButton && <div className="mt-3">{connectionsButton}</div>}
+              </div>
+              <div className="flex-shrink-0">
+                <img
+                  src={profilePicture || "/placeholder.svg?height=120&width=120&query=professional profile avatar"}
+                  alt="Profile Picture"
+                  className="w-24 h-24 rounded-full object-cover border-2"
+                  style={{ borderColor: contentBoxTrimColor }}
+                />
+              </div>
             </div>
           </div>
         )
@@ -311,11 +317,15 @@ export function ProfileShowcase({
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">Connections ({friends.length})</h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[50vh] overflow-y-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[50vh] overflow-y-auto pr-2">
             {friends.map((friend) => (
               <div
                 key={friend.id}
-                className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                onClick={() => {
+                  router.push(`/profile/${friend.id}`)
+                  setShowConnections(false)
+                }}
+                className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors duration-200 cursor-pointer"
               >
                 <div className="relative">
                   <img
@@ -341,56 +351,9 @@ export function ProfileShowcase({
     </Dialog>
   )
 
-  const renderShowcaseItem = (item: ShowcaseItem, index: number) => {
-    const cardClasses =
-      layout === "masonry"
-        ? "break-inside-avoid mb-6"
-        : layout === "spotlight" && index === 0
-          ? "md:col-span-2 lg:col-span-3"
-          : item.size === "long"
-            ? layout === "grid"
-              ? "col-span-2 md:col-span-3 lg:col-span-4"
-              : "md:col-span-2 lg:col-span-3"
-            : ""
-
-    const cardSize = layout === "grid" ? "h-48" : layout === "minimal" ? "h-64" : "h-auto"
-
-    return (
-      <Card
-        key={item.id}
-        className={`overflow-hidden hover:shadow-lg transition-all duration-300 ${cardClasses} ${
-          layout === "spotlight" ? "hover:scale-[1.02]" : ""
-        }`}
-        style={{
-          backgroundColor: contentBoxColor,
-          borderColor: contentBoxTrimColor,
-          borderWidth: "2px",
-        }}
-      >
-        <CardHeader className={layout === "grid" ? "pb-2" : "pb-3"}>
-          <div className="flex items-center justify-between">
-            <CardTitle className={layout === "grid" ? "text-sm" : "text-lg"}>{item.title}</CardTitle>
-            <div className="flex items-center gap-2">
-              {item.size === "long" && (
-                <Badge variant="outline" className="text-xs">
-                  Long
-                </Badge>
-              )}
-            </div>
-          </div>
-          {item.description && (
-            <CardDescription className={layout === "grid" ? "text-xs" : ""}>{item.description}</CardDescription>
-          )}
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className={cardSize}>{renderContent(item)}</div>
-        </CardContent>
-      </Card>
-    )
-  }
-
   const backgroundStyle = {
     backgroundColor,
+    color: computedTextColor,
     ...(backgroundImage && {
       backgroundImage: `url(${backgroundImage})`,
       backgroundSize: "cover",
@@ -399,6 +362,79 @@ export function ProfileShowcase({
     }),
   }
 
+  const renderShowcaseItem = (item: ShowcaseItem, index: number) => {
+    const itemStyle = {
+      backgroundColor: contentBoxColor,
+      borderColor: contentBoxTrimColor,
+      color: getContrastTextColor(contentBoxColor),
+    }
+
+    if (item.type === "text") {
+      return (
+        <div
+          key={index}
+          className="relative rounded-xl border-2 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+          style={itemStyle}
+          onClick={() => setFocusedItem(item)}
+        >
+          <div className="p-6">
+            <h3 className="font-semibold text-lg mb-3">{item.title}</h3>
+            {item.description && <p className="text-sm text-muted-foreground mb-3">{item.description}</p>}
+            <p className="leading-relaxed line-clamp-4">{item.content}</p>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div
+        key={index}
+        className="relative rounded-xl border-2 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+        style={itemStyle}
+      >
+        {renderContentItem(item)}
+        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/50 to-transparent">
+          <h3 className="font-semibold text-white text-sm mb-1">{item.title}</h3>
+          {item.description && <p className="text-xs text-white/90">{item.description}</p>}
+        </div>
+      </div>
+    )
+  }
+
+  const navigateToNextItem = () => {
+    if (!focusedItem) return
+    const currentIndex = items.findIndex((item) => item.id === focusedItem.id)
+    const nextIndex = (currentIndex + 1) % items.length
+    setFocusedItem(items[nextIndex])
+  }
+
+  const navigateToPreviousItem = () => {
+    if (!focusedItem) return
+    const currentIndex = items.findIndex((item) => item.id === focusedItem.id)
+    const previousIndex = (currentIndex - 1 + items.length) % items.length
+    setFocusedItem(items[previousIndex])
+  }
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (!focusedItem) return
+    if (e.key === "ArrowRight") {
+      e.preventDefault()
+      navigateToNextItem()
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault()
+      navigateToPreviousItem()
+    } else if (e.key === "Escape") {
+      setFocusedItem(null)
+    }
+  }
+
+  useEffect(() => {
+    if (focusedItem) {
+      window.addEventListener("keydown", handleKeyDown)
+      return () => window.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [focusedItem])
+
   return (
     <>
       <div className="space-y-8" style={backgroundStyle}>
@@ -406,23 +442,23 @@ export function ProfileShowcase({
           {getProfileLayout()}
 
           <div className="mt-8 mb-6 flex items-center justify-between">
-            <div className="flex gap-1 bg-muted/50 p-1 rounded-lg border">
+            <div className="flex gap-2 bg-card/50 backdrop-blur-sm p-1.5 rounded-xl border shadow-sm">
               <button
                 onClick={() => setActiveTab("showcase")}
-                className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                className={`px-8 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
                   activeTab === "showcase"
-                    ? "bg-background text-foreground shadow-sm border border-border"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                    ? "bg-primary text-primary-foreground shadow-md scale-105"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 }`}
               >
                 Portfolio Showcase
               </button>
               <button
                 onClick={() => setActiveTab("resume")}
-                className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                className={`px-8 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
                   activeTab === "resume"
-                    ? "bg-background text-foreground shadow-sm border border-border"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                    ? "bg-primary text-primary-foreground shadow-md scale-105"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 }`}
               >
                 Resume
@@ -434,7 +470,7 @@ export function ProfileShowcase({
                 onClick={() => setShowResumeModal(true)}
                 variant="outline"
                 size="sm"
-                className="gap-2 bg-background/50 hover:bg-background border-border/50"
+                className="gap-2 bg-card/50 backdrop-blur-sm hover:bg-card border shadow-sm"
               >
                 <ImageIcon className="h-4 w-4" />
                 View Resume
@@ -447,9 +483,9 @@ export function ProfileShowcase({
           )}
 
           {activeTab === "resume" && (
-            <div className="bg-card/50 backdrop-blur-sm rounded-xl border border-border/50 p-8 shadow-sm">
+            <div className="bg-card/50 backdrop-blur-sm rounded-2xl border shadow-lg p-8">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-semibold text-foreground">Professional Resume</h3>
+                <h3 className="text-2xl font-bold">Professional Resume</h3>
                 {resumeFile && (
                   <Button onClick={() => setShowResumeModal(true)} variant="outline" size="sm" className="gap-2">
                     <ImageIcon className="h-4 w-4" />
@@ -458,7 +494,7 @@ export function ProfileShowcase({
                 )}
               </div>
               {resumeFile ? (
-                <div className="bg-background rounded-lg border border-border overflow-hidden shadow-inner">
+                <div className="bg-background rounded-xl border shadow-inner overflow-hidden">
                   <iframe
                     src={resumeFile}
                     className="w-full h-[700px]"
@@ -469,10 +505,10 @@ export function ProfileShowcase({
                   />
                 </div>
               ) : (
-                <div className="bg-background rounded-lg border border-border p-12 text-center">
+                <div className="bg-background rounded-xl border p-16 text-center">
                   <div className="text-muted-foreground">
-                    <ImageIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg mb-2">No resume uploaded yet</p>
+                    <ImageIcon className="h-16 w-16 mx-auto mb-4 opacity-40" />
+                    <p className="text-lg font-medium mb-2">No resume uploaded yet</p>
                     <p className="text-sm">Upload your resume in the edit profile section to display it here.</p>
                   </div>
                 </div>
@@ -484,61 +520,77 @@ export function ProfileShowcase({
 
       {renderConnectionsModal()}
 
-      <Dialog open={showResumeModal} onOpenChange={setShowResumeModal}>
-        <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0">
-          <div className="relative h-[95vh]">
-            <div className="absolute top-4 right-4 z-10 flex gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  const link = document.createElement("a")
-                  link.href = resumeFile
-                  link.download = `${profileName || "Resume"}.pdf`
-                  link.click()
-                }}
-                className="bg-background/90 hover:bg-background"
-              >
-                Download
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="bg-background/90 hover:bg-background"
-                onClick={() => setShowResumeModal(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <iframe
-              src={resumeFile}
-              className="w-full h-full rounded-lg"
-              title="Resume - Full Screen"
-              style={{ border: "none" }}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={!!focusedItem} onOpenChange={() => setFocusedItem(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
-          {focusedItem && (
-            <div className="relative">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="absolute top-2 right-2 z-10 bg-black/50 hover:bg-black/70 text-white"
-                onClick={() => setFocusedItem(null)}
+        {focusedItem && items.length > 1 && (
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="fixed left-[240px] top-1/2 -translate-y-1/2 z-[80] bg-white hover:bg-gray-100 text-black h-20 w-20 rounded-full shadow-2xl border-4 border-gray-300 backdrop-blur-sm transition-transform hover:scale-110"
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                navigateToPreviousItem()
+              }}
+              onPointerDown={(e) => {
+                e.stopPropagation()
+              }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="40"
+                height="40"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <X className="h-4 w-4" />
-              </Button>
-              <div className="p-6">
-                <div className="mb-4">
-                  <h2 className="text-2xl font-bold">{focusedItem.title}</h2>
-                  {focusedItem.description && <p className="text-muted-foreground mt-1">{focusedItem.description}</p>}
-                </div>
-                <div className="flex justify-center">{renderContent(focusedItem, true)}</div>
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="fixed right-[240px] top-1/2 -translate-y-1/2 z-[80] bg-white hover:bg-gray-100 text-black h-20 w-20 rounded-full shadow-2xl border-4 border-gray-300 backdrop-blur-sm transition-transform hover:scale-110"
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                navigateToNextItem()
+              }}
+              onPointerDown={(e) => {
+                e.stopPropagation()
+              }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="40"
+                height="40"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </Button>
+          </>
+        )}
+
+        <DialogContent className="max-w-[75vw] max-h-[95vh] overflow-hidden p-0">
+          {focusedItem && (
+            <div className="p-12 overflow-y-auto max-h-[95vh]">
+              <div className="mb-6">
+                <h2 className="text-3xl font-bold mb-2">{focusedItem.title}</h2>
+                {focusedItem.description && <p className="text-muted-foreground text-lg">{focusedItem.description}</p>}
               </div>
+              <div className="flex justify-center">{renderContentItem(focusedItem, true)}</div>
             </div>
           )}
         </DialogContent>

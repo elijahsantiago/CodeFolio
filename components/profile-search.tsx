@@ -55,10 +55,13 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
 
     setLoading(true)
     try {
+      console.log("[v0] Searching for:", searchTerm)
       const results = await searchProfiles(searchTerm)
+      console.log("[v0] Search results:", results.length)
       setSearchResults(results)
     } catch (error) {
       console.error("Error searching profiles:", error)
+      alert("Search failed. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -95,75 +98,85 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
 
   return (
     <div className={className}>
-      <div className="flex items-center gap-4 mb-6">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+      <div className="flex items-center gap-4 mb-8">
+        <div className="relative flex-1 max-w-2xl">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
           <Input
-            placeholder="Search for portfolios..."
+            placeholder="Search for portfolios by name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyPress={handleKeyPress}
-            className="pl-10"
+            className="pl-12 h-12 text-base text-foreground rounded-xl border-2 shadow-sm focus:shadow-md transition-shadow"
           />
         </div>
-        <Button onClick={handleSearch} disabled={loading}>
+        <Button onClick={handleSearch} disabled={loading} size="lg" className="h-12 px-8 rounded-xl shadow-sm">
           {loading ? "Searching..." : "Search"}
         </Button>
       </div>
 
       {searchTerm.trim() && (
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold mb-2">Search Results ({searchResults.length})</h3>
+        <div className="mb-6">
+          <h3 className="text-2xl font-bold text-foreground">Search Results ({searchResults.length})</h3>
         </div>
       )}
 
       {!searchTerm.trim() && (
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold mb-2">Discover Portfolios</h3>
+        <div className="mb-6">
+          <h3 className="text-2xl font-bold text-foreground">Discover Portfolios</h3>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {displayProfiles.map((profile) => (
           <Card
             key={profile.id}
-            className="hover:shadow-xl transition-all duration-300 cursor-pointer group hover:scale-[1.02]"
+            className="hover:shadow-2xl transition-shadow duration-300 cursor-pointer overflow-hidden rounded-2xl border-2"
             onClick={() => viewProfile(profile)}
           >
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4 mb-4">
-                <Avatar className="h-16 w-16 ring-2 ring-primary/20">
+            <div
+              className="h-72 relative flex flex-col justify-end p-6"
+              style={{
+                backgroundColor: profile.backgroundColor,
+                ...(profile.backgroundImage && {
+                  backgroundImage: `url(${profile.backgroundImage})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }),
+              }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/90" />
+              <div className="relative z-10 flex items-center gap-4">
+                <Avatar className="h-20 w-20 ring-4 ring-white/30 shadow-2xl">
                   <AvatarImage src={profile.profilePicture || "/placeholder.svg"} alt={profile.profileName} />
                   <AvatarFallback>
-                    <User className="h-8 w-8" />
+                    <User className="h-10 w-10" />
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-lg truncate group-hover:text-primary transition-colors">
-                    {profile.profileName}
-                  </h4>
-                  <p className="text-sm text-muted-foreground truncate">{profile.email}</p>
-                  <div className="flex gap-2 mt-2">
-                    <Badge variant="secondary" className="text-xs">
-                      {profile.layout}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs">
+                  <h4 className="font-bold text-xl truncate text-white drop-shadow-lg mb-2">{profile.profileName}</h4>
+                  <div className="flex gap-2">
+                    <Badge className="text-xs bg-white text-black font-semibold shadow-md">{profile.layout}</Badge>
+                    <Badge className="text-xs bg-black/80 text-white border-2 border-white/40 font-semibold shadow-md">
                       {profile.showcaseItems.length} items
                     </Badge>
                   </div>
                 </div>
               </div>
+            </div>
 
-              <p className="text-sm text-muted-foreground mb-4 line-clamp-3">{profile.profileDescription}</p>
+            <CardContent className="p-6">
+              <p className="text-sm text-foreground/80 mb-5 line-clamp-2 leading-relaxed">
+                {profile.profileDescription}
+              </p>
 
               {profile.showcaseItems.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Portfolio Preview</p>
-                  <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-foreground uppercase tracking-wider">Portfolio Preview</p>
+                  <div className="grid grid-cols-2 gap-3">
                     {profile.showcaseItems.slice(0, 4).map((item, index) => (
                       <div
                         key={item.id}
-                        className="aspect-square bg-muted rounded-lg overflow-hidden relative group/item"
+                        className="aspect-square bg-muted rounded-xl overflow-hidden relative group/item shadow-sm"
                       >
                         {item.type === "image" && item.content ? (
                           <img
@@ -173,8 +186,8 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
-                            <div className="text-center p-2">
-                              <p className="text-xs font-medium truncate">{item.title}</p>
+                            <div className="text-center p-3">
+                              <p className="text-xs font-semibold truncate text-foreground">{item.title}</p>
                               {item.type === "text" && (
                                 <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                                   {item.content.substring(0, 50)}...
@@ -184,8 +197,8 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
                           </div>
                         )}
                         {index === 3 && profile.showcaseItems.length > 4 && (
-                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                            <span className="text-white font-medium text-sm">
+                          <div className="absolute inset-0 bg-black/70 flex items-center justify-center backdrop-blur-sm">
+                            <span className="text-white font-semibold text-sm">
                               +{profile.showcaseItems.length - 4} more
                             </span>
                           </div>

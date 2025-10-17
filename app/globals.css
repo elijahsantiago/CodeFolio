@@ -41,39 +41,26 @@
 }
 
 .dark {
-  /* Updated dark mode to use green-based gaming theme */
-  --background: oklch(0.08 0.02 142); /* #0a0f0a - Very dark green background */
-  --foreground: oklch(0.95 0.02 142); /* #f0fdf4 - Light green-tinted text */
-  --card: oklch(0.12 0.03 142); /* #0f1b0f - Dark green cards */
-  --card-foreground: oklch(0.92 0.02 142); /* #e8f5e8 - Light text on cards */
-  --popover: oklch(0.12 0.03 142); /* #0f1b0f - Dark green popovers */
-  --popover-foreground: oklch(0.92 0.02 142); /* #e8f5e8 - Light text in popovers */
-  --primary: oklch(0.65 0.18 142); /* #22c55e - Bright green primary */
-  --primary-foreground: oklch(0.08 0.02 142); /* #0a0f0a - Dark text on primary */
-  --secondary: oklch(0.75 0.2 110); /* #84cc16 - Lime accent */
-  --secondary-foreground: oklch(0.08 0.02 142); /* #0a0f0a - Dark text on secondary */
-  --muted: oklch(0.15 0.03 142); /* #1a2e1a - Muted dark green */
-  --muted-foreground: oklch(0.65 0.05 142); /* #6b8e6b - Muted green text */
-  --accent: oklch(0.75 0.2 110); /* #84cc16 - Lime accent */
-  --accent-foreground: oklch(0.08 0.02 142); /* #0a0f0a - Dark text on accent */
-  --destructive: oklch(0.55 0.22 25); /* #dc2626 - Red for destructive actions */
-  --destructive-foreground: oklch(0.95 0.02 142); /* #f0fdf4 - Light text on destructive */
-  --border: oklch(0.2 0.04 142); /* #2d4a2d - Dark green borders */
-  --input: oklch(0.12 0.03 142); /* #0f1b0f - Dark green inputs */
-  --ring: oklch(0.65 0.18 142); /* #22c55e - Green focus rings */
-  --chart-1: oklch(0.65 0.18 142); /* Primary green chart color */
-  --chart-2: oklch(0.75 0.2 110); /* Lime chart color */
-  --chart-3: oklch(0.45 0.15 142); /* Darker green chart color */
-  --chart-4: oklch(0.85 0.15 110); /* Light lime chart color */
-  --chart-5: oklch(0.35 0.12 142); /* Deep green chart color */
-  --sidebar: oklch(0.1 0.03 142); /* #0d160d - Very dark green sidebar */
-  --sidebar-foreground: oklch(0.92 0.02 142); /* #e8f5e8 - Light sidebar text */
-  --sidebar-primary: oklch(0.65 0.18 142); /* #22c55e - Green sidebar primary */
-  --sidebar-primary-foreground: oklch(0.08 0.02 142); /* #0a0f0a - Dark text on sidebar primary */
-  --sidebar-accent: oklch(0.75 0.2 110); /* #84cc16 - Lime sidebar accent */
-  --sidebar-accent-foreground: oklch(0.08 0.02 142); /* #0a0f0a - Dark text on sidebar accent */
-  --sidebar-border: oklch(0.2 0.04 142); /* #2d4a2d - Dark green sidebar borders */
-  --sidebar-ring: oklch(0.65 0.18 142); /* #22c55e - Green sidebar focus rings */
+  /* Improved dark mode colors for better text visibility */
+  --background: oklch(0.12 0.01 220); /* #1e293b - Lighter dark background */
+  --foreground: oklch(0.95 0.01 220); /* #f8fafc - Brighter text */
+  --card: oklch(0.16 0.02 220); /* #334155 - Lighter cards */
+  --card-foreground: oklch(0.92 0.01 220); /* #f1f5f9 - Bright card text */
+  --popover: oklch(0.16 0.02 220); /* #334155 - Lighter popovers */
+  --popover-foreground: oklch(0.92 0.01 220); /* #f1f5f9 - Bright popover text */
+  --primary: oklch(0.6 0.15 220); /* #60a5fa - Brighter blue primary */
+  --primary-foreground: oklch(0.98 0.01 220); /* #f8fafc - Very bright text on primary */
+  --secondary: oklch(0.22 0.02 220); /* #475569 - Lighter secondary */
+  --secondary-foreground: oklch(0.92 0.01 220); /* #f1f5f9 - Bright text on secondary */
+  --muted: oklch(0.18 0.02 220); /* #334155 - Lighter muted */
+  --muted-foreground: oklch(0.7 0.01 220); /* #cbd5e1 - Much brighter muted text */
+  --accent: oklch(0.22 0.02 220); /* #475569 - Lighter accent */
+  --accent-foreground: oklch(0.92 0.01 220); /* #f1f5f9 - Bright text on accent */
+  --destructive: oklch(0.6 0.22 25); /* #ef4444 - Brighter red */
+  --destructive-foreground: oklch(0.98 0.01 220); /* #f8fafc - Bright text on destructive */
+  --border: oklch(0.25 0.02 220); /* #475569 - Lighter borders */
+  --input: oklch(0.16 0.02 220); /* #334155 - Lighter inputs */
+  --ring: oklch(0.6 0.15 220); /* #60a5fa - Bright focus ring */
 }
 
 /* Added light business theme */
@@ -189,7 +176,25 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+  }
+
+  /* Added smooth scrolling and improved typography */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-bold tracking-tight;
+  }
+
+  p {
+    @apply leading-relaxed;
   }
 }
 

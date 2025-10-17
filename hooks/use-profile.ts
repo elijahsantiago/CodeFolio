@@ -108,6 +108,7 @@ export function useProfile() {
             ],
             resumeFile: "",
             isPublic: true,
+            connections: [], // Added empty connections array to default profile
           }
 
           try {
