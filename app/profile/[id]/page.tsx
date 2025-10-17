@@ -11,6 +11,8 @@ import {
   cancelConnectionRequest,
   removeConnection,
   hasPendingRequest,
+  adminDeleteProfile,
+  adminDeleteShowcaseItem,
   type UserProfile,
 } from "@/lib/firestore"
 import { isFirebaseConfigured } from "@/lib/firebase"
@@ -29,6 +31,7 @@ export default function ProfileViewPage() {
   const [isConnected, setIsConnected] = useState(false)
   const [requestSent, setRequestSent] = useState(false)
   const [connectLoading, setConnectLoading] = useState(false)
+  const [isOwnProfile, setIsOwnProfile] = useState(false) // Declare isOwnProfile here
 
   useEffect(() => {
     setFirebaseAvailable(isFirebaseConfigured())
@@ -69,6 +72,11 @@ export default function ProfileViewPage() {
         setRequestSent(hasPending)
       })
     }
+
+    // Set isOwnProfile after loading the profile
+    if (user && profile) {
+      setIsOwnProfile(user.uid === profile.userId)
+    }
   }, [currentUserProfile, profile, user])
 
   const handleConnectionToggle = async () => {
@@ -104,6 +112,39 @@ export default function ProfileViewPage() {
       }
     } finally {
       setConnectLoading(false)
+    }
+  }
+
+  const isAdmin = user?.email === "e.santiago.e1@gmail.com" || user?.email === "gabeasosa@gmail.com"
+  const canDelete = isAdmin && !isOwnProfile
+
+  const handleDeleteProfile = async () => {
+    if (!canDelete || !profile || !user) return
+
+    if (confirm(`Are you sure you want to delete ${profile.profileName}'s profile? This action cannot be undone.`)) {
+      try {
+        await adminDeleteProfile(user.email || "", profile.userId)
+        alert("Profile deleted successfully")
+        router.push("/?discover=true")
+      } catch (error) {
+        console.error("Error deleting profile:", error)
+        alert("Failed to delete profile")
+      }
+    }
+  }
+
+  const handleDeleteShowcaseItem = async (itemId: string) => {
+    if (!canDelete || !profile || !user) return
+
+    if (confirm("Are you sure you want to delete this item?")) {
+      try {
+        await adminDeleteShowcaseItem(user.email || "", profile.userId, itemId)
+        alert("Item deleted successfully")
+        window.location.reload()
+      } catch (error) {
+        console.error("Error deleting item:", error)
+        alert("Failed to delete item")
+      }
     }
   }
 
@@ -162,8 +203,6 @@ export default function ProfileViewPage() {
     }),
   }
 
-  const isOwnProfile = user && user.uid === profile.userId
-
   return (
     <div className="min-h-screen" style={pageBackgroundStyle}>
       <div className="container mx-auto px-4 py-8">
@@ -173,34 +212,42 @@ export default function ProfileViewPage() {
             Back to Discover
           </Button>
 
-          {!isOwnProfile && user && (
-            <Button
-              onClick={handleConnectionToggle}
-              disabled={connectLoading}
-              variant={isConnected ? "outline" : "default"}
-              size="sm"
-              className="gap-2"
-            >
-              {connectLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : isConnected ? (
-                <>
-                  <UserCheck className="h-4 w-4" />
-                  Connected
-                </>
-              ) : requestSent ? (
-                <>
-                  <UserPlus className="h-4 w-4" />
-                  Request Sent
-                </>
-              ) : (
-                <>
-                  <UserPlus className="h-4 w-4" />
-                  Send Request
-                </>
-              )}
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {canDelete && (
+              <Button onClick={handleDeleteProfile} variant="destructive" size="sm" className="gap-2">
+                Delete Profile
+              </Button>
+            )}
+
+            {!isOwnProfile && user && (
+              <Button
+                onClick={handleConnectionToggle}
+                disabled={connectLoading}
+                variant={isConnected ? "outline" : "default"}
+                size="sm"
+                className="gap-2"
+              >
+                {connectLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : isConnected ? (
+                  <>
+                    <UserCheck className="h-4 w-4" />
+                    Connected
+                  </>
+                ) : requestSent ? (
+                  <>
+                    <UserPlus className="h-4 w-4" />
+                    Request Sent
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="h-4 w-4" />
+                    Send Request
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="mb-4">
@@ -220,6 +267,7 @@ export default function ProfileViewPage() {
           profileInfoColor={profile.profileInfoColor}
           profileInfoTrimColor={profile.profileInfoTrimColor}
           textColor={profile.textColor}
+          bannerImage={profile.bannerImage}
           friends={
             profile.connections?.map((conn) => ({
               id: conn.userId,
@@ -231,6 +279,8 @@ export default function ProfileViewPage() {
           }
           resumeFile={profile.resumeFile}
           isViewOnly={true}
+          userEmail={user?.email || ""}
+          onDeleteItem={canDelete ? handleDeleteShowcaseItem : undefined}
         />
       </div>
     </div>

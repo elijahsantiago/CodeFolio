@@ -43,6 +43,7 @@ interface ProfileShowcaseProps {
   isViewOnly?: boolean
   onViewConnections?: () => void
   userEmail?: string
+  onDeleteItem?: (itemId: string) => void // Added onDeleteItem prop
 }
 
 export function ProfileShowcase({
@@ -64,6 +65,7 @@ export function ProfileShowcase({
   isViewOnly = false,
   onViewConnections,
   userEmail = "",
+  onDeleteItem, // Added onDeleteItem prop
 }: ProfileShowcaseProps) {
   const [focusedItem, setFocusedItem] = useState<ShowcaseItem | null>(null)
   const [showConnections, setShowConnections] = useState(false)
@@ -273,8 +275,23 @@ export function ProfileShowcase({
                   <h1 className="text-3xl font-bold">{profileName || "Profile Showcase"}</h1>
                   {isAdmin && (
                     <div className="relative">
-                      <div className="absolute inset-0 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 rounded-lg blur-md opacity-75 animate-pulse" />
-                      <div className="relative flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 rounded-lg shadow-lg">
+                      <style jsx>{`
+                        @keyframes rainbow-cycle {
+                          0% { background-position: 0% 50%; }
+                          50% { background-position: 100% 50%; }
+                          100% { background-position: 0% 50%; }
+                        }
+                        .rainbow-glow {
+                          background: linear-gradient(90deg, 
+                            #ff0000, #ff7f00, #ffff00, #00ff00, 
+                            #0000ff, #4b0082, #9400d3, #ff0000
+                          );
+                          background-size: 200% 200%;
+                          animation: rainbow-cycle 3s linear infinite;
+                        }
+                      `}</style>
+                      <div className="absolute inset-0 rainbow-glow rounded-lg blur-md opacity-75" />
+                      <div className="relative flex items-center gap-1.5 px-3 py-1.5 rainbow-glow rounded-lg shadow-lg">
                         <Shield className="h-4 w-4 text-white drop-shadow-md" />
                         <span className="text-xs font-bold text-white drop-shadow-md tracking-wide">ADMIN</span>
                       </div>
@@ -380,6 +397,19 @@ export function ProfileShowcase({
           style={itemStyle}
           onClick={() => setFocusedItem(item)}
         >
+          {onDeleteItem && (
+            <Button
+              variant="destructive"
+              size="sm"
+              className="absolute top-2 right-2 z-10 opacity-0 hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDeleteItem(item.id)
+              }}
+            >
+              Delete
+            </Button>
+          )}
           <div className="p-6">
             <h3 className="font-semibold text-lg mb-3">{item.title}</h3>
             {item.description && <p className="text-sm text-muted-foreground mb-3">{item.description}</p>}
@@ -395,6 +425,19 @@ export function ProfileShowcase({
         className="relative rounded-xl border-2 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
         style={itemStyle}
       >
+        {onDeleteItem && (
+          <Button
+            variant="destructive"
+            size="sm"
+            className="absolute top-2 right-2 z-10 opacity-0 hover:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDeleteItem(item.id)
+            }}
+          >
+            Delete
+          </Button>
+        )}
         {renderContentItem(item)}
         <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/50 to-transparent">
           <h3 className="font-semibold text-white text-sm mb-1">{item.title}</h3>

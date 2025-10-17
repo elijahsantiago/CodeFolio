@@ -164,8 +164,23 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
                       <h4 className="font-bold text-xl truncate text-white drop-shadow-lg">{profile.profileName}</h4>
                       {isAdminProfile && (
                         <div className="relative">
-                          <div className="absolute inset-0 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 rounded-lg blur-sm opacity-75 animate-pulse" />
-                          <div className="relative flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 rounded-lg shadow-xl border-2 border-white/40">
+                          <style jsx>{`
+                            @keyframes rainbow-cycle {
+                              0% { background-position: 0% 50%; }
+                              50% { background-position: 100% 50%; }
+                              100% { background-position: 0% 50%; }
+                            }
+                            .rainbow-glow {
+                              background: linear-gradient(90deg, 
+                                #ff0000, #ff7f00, #ffff00, #00ff00, 
+                                #0000ff, #4b0082, #9400d3, #ff0000
+                              );
+                              background-size: 200% 200%;
+                              animation: rainbow-cycle 3s linear infinite;
+                            }
+                          `}</style>
+                          <div className="absolute inset-0 rainbow-glow rounded-lg blur-md opacity-75" />
+                          <div className="relative flex items-center gap-1.5 px-2.5 py-1.5 rainbow-glow rounded-lg shadow-xl border-2 border-white/40">
                             <Shield className="h-3.5 w-3.5 text-white drop-shadow-lg" />
                             <span className="text-xs font-bold text-white drop-shadow-lg tracking-wide">ADMIN</span>
                           </div>
