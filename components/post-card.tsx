@@ -20,6 +20,8 @@ import {
 import { useProfile } from "@/hooks/use-profile"
 import { useAuth } from "@/hooks/use-auth"
 import { formatDistanceToNow } from "date-fns"
+import { doc, onSnapshot } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
 interface PostCardProps {
   post: Post
@@ -51,8 +53,26 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
   }, [currentUserId, post.likes])
 
   useEffect(() => {
-    setCommentCount(post.commentCount || 0)
-  }, [post.commentCount])
+    if (!db || !post.id) return
+
+    const postRef = doc(db, "posts", post.id)
+    const unsubscribe = onSnapshot(
+      postRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data()
+          if (data.commentCount !== undefined) {
+            setCommentCount(data.commentCount)
+          }
+        }
+      },
+      (error) => {
+        console.error("[v0] Error listening to post updates:", error)
+      },
+    )
+
+    return () => unsubscribe()
+  }, [post.id])
 
   useEffect(() => {
     if (post.id) {
