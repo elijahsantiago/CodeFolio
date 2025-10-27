@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useRef } from "react"
 import { PostCard } from "@/components/post-card"
-import { PostModal } from "@/components/post-modal"
 import { CreatePostForm } from "@/components/create-post-form"
 import { Button } from "@/components/ui/button"
 import { Loader2, RefreshCw } from "lucide-react"
 import { getPosts, type Post } from "@/lib/firestore"
 import { useAuth } from "@/hooks/use-auth"
+import { useRouter } from "next/navigation"
 
 interface LiveFeedProps {
   highlightPostId?: string | null
@@ -22,9 +22,8 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const { user } = useAuth()
+  const router = useRouter()
   const postRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
-  const [selectedPost, setSelectedPost] = useState<Post | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
 
   const loadPosts = async (loadMore = false) => {
     try {
@@ -85,19 +84,10 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
 
   const handlePostDeleted = (postId: string) => {
     setPosts((prev) => prev.filter((post) => post.id !== postId))
-    if (selectedPost?.id === postId) {
-      handleCloseModal()
-    }
   }
 
   const handlePostClick = (post: Post) => {
-    setSelectedPost(post)
-    setIsModalOpen(true)
-  }
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false)
-    setTimeout(() => setSelectedPost(null), 200) // Delay clearing to allow animation
+    router.push(`/post/${post.id}`)
   }
 
   if (loading) {
@@ -170,14 +160,6 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
           </>
         )}
       </div>
-
-      <PostModal
-        post={selectedPost}
-        currentUserId={user?.uid}
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onPostDeleted={handlePostDeleted}
-      />
     </div>
   )
 }

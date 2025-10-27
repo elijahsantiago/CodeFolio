@@ -1533,6 +1533,30 @@ export async function getComments(postId: string, maxResults = 50): Promise<Comm
   }
 }
 
+export async function getPostById(postId: string): Promise<Post | null> {
+  if (!isFirebaseConfigured()) {
+    return null
+  }
+
+  if (!db) {
+    return null
+  }
+
+  try {
+    const postRef = doc(db, "posts", postId)
+    const postSnap = await getDoc(postRef)
+
+    if (postSnap.exists()) {
+      return { id: postSnap.id, ...postSnap.data() } as Post
+    }
+
+    return null
+  } catch (error: any) {
+    console.error("[v0] Error getting post:", error)
+    return null
+  }
+}
+
 export async function incrementPostView(postId: string): Promise<void> {
   if (!isFirebaseConfigured()) {
     return
