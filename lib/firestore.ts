@@ -167,7 +167,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 }
 
 // Search profiles by keywords
-export async function searchProfiles(searchTerm: string, maxResults = 10): Promise<UserProfile[]> {
+export async function searchProfiles(searchTerm: string, maxResults = 10, isAdmin = false): Promise<UserProfile[]> {
   if (!isFirebaseConfigured()) {
     console.warn("Firebase not configured, returning empty search results")
     return []
@@ -179,18 +179,12 @@ export async function searchProfiles(searchTerm: string, maxResults = 10): Promi
   }
 
   try {
-    console.log("[v0] Searching for profiles with term:", searchTerm)
+    console.log("[v0] Searching for profiles with term:", searchTerm, "Admin:", isAdmin)
 
-    // First, try to search by profile name directly
     const profilesRef = collection(db, "profiles")
     const searchLower = searchTerm.toLowerCase()
 
-    // Get all public profiles and filter client-side for better profile name matching
-    const q = query(
-      profilesRef,
-      where("isPublic", "==", true),
-      limit(50), // Get more results to filter client-side
-    )
+    const q = isAdmin ? query(profilesRef, limit(50)) : query(profilesRef, where("isPublic", "==", true), limit(50))
 
     const querySnapshot = await getDocs(q)
     const profiles: UserProfile[] = []
@@ -199,13 +193,11 @@ export async function searchProfiles(searchTerm: string, maxResults = 10): Promi
       const profile = { id: doc.id, ...doc.data() } as UserProfile
       const profileNameLower = profile.profileName.toLowerCase()
 
-      // Prioritize exact matches and profile name matches
       if (profileNameLower.includes(searchLower)) {
         profiles.push(profile)
       }
     })
 
-    // Sort by relevance: exact matches first, then partial matches
     profiles.sort((a, b) => {
       const aName = a.profileName.toLowerCase()
       const bName = b.profileName.toLowerCase()
@@ -219,7 +211,6 @@ export async function searchProfiles(searchTerm: string, maxResults = 10): Promi
       if (aStarts && !bStarts) return -1
       if (!aStarts && bStarts) return 1
 
-      // Sort by update time for same relevance
       const aTime = a.updatedAt?.toMillis?.() || 0
       const bTime = b.updatedAt?.toMillis?.() || 0
       return bTime - aTime
@@ -238,7 +229,7 @@ export async function searchProfiles(searchTerm: string, maxResults = 10): Promi
 }
 
 // Get all public profiles (for browsing)
-export async function getPublicProfiles(maxResults = 20): Promise<UserProfile[]> {
+export async function getPublicProfiles(maxResults = 20, isAdmin = false): Promise<UserProfile[]> {
   if (!isFirebaseConfigured()) {
     console.warn("Firebase not configured, returning empty public profiles")
     return []
@@ -251,7 +242,10 @@ export async function getPublicProfiles(maxResults = 20): Promise<UserProfile[]>
 
   try {
     const profilesRef = collection(db, "profiles")
-    const q = query(profilesRef, where("isPublic", "==", true), orderBy("updatedAt", "desc"), limit(maxResults))
+
+    const q = isAdmin
+      ? query(profilesRef, orderBy("updatedAt", "desc"), limit(maxResults))
+      : query(profilesRef, where("isPublic", "==", true), orderBy("updatedAt", "desc"), limit(maxResults))
 
     const querySnapshot = await getDocs(q)
     const profiles: UserProfile[] = []
@@ -431,6 +425,11 @@ export async function adminDeleteProfile(adminEmail: string, targetUserId: strin
     console.log("[v0] Profile deleted successfully by admin")
   } catch (error: any) {
     console.error("[v0] Error deleting profile:", error)
+    if (error?.code === "permission-denied") {
+      throw new Error(
+        "Admin permissions not configured in Firestore. Please update your Firestore security rules to enable admin functionality. See CONNECTION_SETUP.md for instructions.",
+      )
+    }
     throw error
   }
 }
@@ -471,6 +470,48 @@ export async function adminDeleteShowcaseItem(adminEmail: string, targetUserId: 
     console.log("[v0] Showcase item deleted successfully by admin")
   } catch (error: any) {
     console.error("[v0] Error deleting showcase item:", error)
+    if (error?.code === "permission-denied") {
+      throw new Error(
+        "Admin permissions not configured in Firestore. Please update your Firestore security rules to enable admin functionality. See CONNECTION_SETUP.md for instructions.",
+      )
+    }
+    throw error
+  }
+}
+
+// Admin function to reset a user's connections
+export async function adminResetConnections(adminEmail: string, targetUserId: string): Promise<void> {
+  if (adminEmail !== "e.santiago.e1@gmail.com" && adminEmail !== "gabeasosa@gmail.com") {
+    throw new Error("Unauthorized: Admin access required")
+  }
+
+  if (!isFirebaseConfigured()) {
+    console.warn("[v0] Firebase not configured, skipping connection reset")
+    return
+  }
+
+  if (!db) {
+    console.warn("[v0] Firestore database not initialized")
+    return
+  }
+
+  try {
+    console.log("[v0] Admin resetting connections for user:", targetUserId)
+    const profileRef = doc(db, "profiles", targetUserId)
+    await updateDoc(profileRef, {
+      connections: [],
+      sentConnectionRequests: [],
+      receivedConnectionRequests: [],
+      updatedAt: serverTimestamp(),
+    })
+    console.log("[v0] Connections reset successfully by admin")
+  } catch (error: any) {
+    console.error("[v0] Error resetting connections:", error)
+    if (error?.code === "permission-denied") {
+      throw new Error(
+        "Admin permissions not configured in Firestore. Please update your Firestore security rules to enable admin functionality. See CONNECTION_SETUP.md for instructions.",
+      )
+    }
     throw error
   }
 }
@@ -544,18 +585,36 @@ export async function sendConnectionRequest(
       updatedAt: serverTimestamp(),
     })
 
-    // Add to recipient's receivedConnectionRequests
-    const targetReceivedRequests = targetProfile.receivedConnectionRequests || []
-    await updateDoc(targetProfileRef, {
-      receivedConnectionRequests: [...targetReceivedRequests, newRequest],
-      updatedAt: serverTimestamp(),
-    })
+    console.log("[v0] Connection request added to your sent requests")
 
-    console.log("[v0] Connection request sent successfully")
+    try {
+      const targetReceivedRequests = targetProfile.receivedConnectionRequests || []
+      await updateDoc(targetProfileRef, {
+        receivedConnectionRequests: [...targetReceivedRequests, newRequest],
+        updatedAt: serverTimestamp(),
+      })
+
+      console.log("[v0] Connection request sent successfully")
+    } catch (recipientError: any) {
+      if (recipientError?.code === "permission-denied") {
+        console.warn("[v0] Could not add request to recipient's profile due to permissions")
+        console.warn("[v0] Request saved on your side. Recipient won't see it until security rules are updated.")
+        console.warn(
+          "[v0] To enable full connection request functionality, update Firestore security rules (see FIREBASE_CONNECTION_FIX.md)",
+        )
+        // Don't throw - the request was saved on sender's side
+      } else {
+        console.error("[v0] Error updating recipient profile:", recipientError)
+        throw recipientError
+      }
+    }
   } catch (error: any) {
     console.error("[v0] Error sending connection request:", error)
     if (error?.code === "permission-denied") {
       console.error("[v0] Firestore permission denied - check security rules")
+      throw new Error(
+        "Connection request failed due to Firestore permissions. Please update your Firestore security rules as described in FIREBASE_CONNECTION_FIX.md",
+      )
     }
     throw error
   }
@@ -654,8 +713,9 @@ export async function respondToConnectionRequest(
     }
 
     if (accept) {
-      // Add connection to both users
       const existingConnections = currentProfile.connections || []
+      console.log("[v0] Current user existing connections count:", existingConnections.length)
+
       const newConnection: Connection = {
         id: request.fromUserId,
         userId: request.fromUserId,
@@ -667,60 +727,95 @@ export async function respondToConnectionRequest(
 
       // Update current user's profile - add connection and remove request
       const updatedReceivedRequests = receivedRequests.filter((req) => req.id !== requestId)
+      const acceptedRequest = { ...request, status: "accepted" as const, respondedAt: Date.now() }
+
+      console.log("[v0] Updating current user profile - adding connection to:", request.fromUserName)
+
       await updateDoc(currentProfileRef, {
         connections: [...existingConnections, newConnection],
-        receivedConnectionRequests: updatedReceivedRequests,
+        receivedConnectionRequests: updatedReceivedRequests.map((req) =>
+          req.id === requestId ? acceptedRequest : req,
+        ),
         updatedAt: serverTimestamp(),
       })
 
-      // Add connection to requester's profile and update their sent requests
-      const requesterProfileRef = doc(db, "profiles", request.fromUserId)
-      const requesterProfileSnap = await getDoc(requesterProfileRef)
+      console.log("[v0] Current user profile updated - new connections count:", existingConnections.length + 1)
 
-      if (requesterProfileSnap.exists()) {
-        const requesterData = requesterProfileSnap.data() as UserProfile
-        const requesterConnections = requesterData.connections || []
-        const requesterSentRequests = requesterData.sentConnectionRequests || []
+      try {
+        const requesterProfileRef = doc(db, "profiles", request.fromUserId)
+        const requesterProfileSnap = await getDoc(requesterProfileRef)
 
-        const reciprocalConnection: Connection = {
-          id: currentUserId,
-          userId: currentUserId,
-          profileName: currentProfile.profileName,
-          profilePicture: currentProfile.profilePicture,
-          email: currentProfile.email,
-          connectedAt: Date.now(),
+        if (requesterProfileSnap.exists()) {
+          const requesterData = requesterProfileSnap.data() as UserProfile
+          const requesterConnections = requesterData.connections || []
+          const requesterSentRequests = requesterData.sentConnectionRequests || []
+
+          console.log("[v0] Requester existing connections count:", requesterConnections.length)
+
+          const reciprocalConnection: Connection = {
+            id: currentUserId,
+            userId: currentUserId,
+            profileName: currentProfile.profileName,
+            profilePicture: currentProfile.profilePicture,
+            email: currentProfile.email,
+            connectedAt: Date.now(),
+          }
+
+          const updatedSentRequests = requesterSentRequests.map((req) =>
+            req.id === requestId ? { ...req, status: "accepted" as const, respondedAt: Date.now() } : req,
+          )
+
+          console.log("[v0] Updating requester profile - adding connection to:", currentProfile.profileName)
+
+          await updateDoc(requesterProfileRef, {
+            connections: [...requesterConnections, reciprocalConnection],
+            sentConnectionRequests: updatedSentRequests,
+            updatedAt: serverTimestamp(),
+          })
+
+          console.log("[v0] Requester profile updated successfully")
         }
-
-        const updatedSentRequests = requesterSentRequests.filter((req) => req.id !== requestId)
-
-        await updateDoc(requesterProfileRef, {
-          connections: [...requesterConnections, reciprocalConnection],
-          sentConnectionRequests: updatedSentRequests,
-          updatedAt: serverTimestamp(),
-        })
+      } catch (requesterError: any) {
+        if (requesterError?.code === "permission-denied") {
+          console.warn("[v0] Could not update requester's profile due to permissions")
+          console.warn("[v0] Connection accepted on your side. The requester will see the connection when they sync.")
+          console.warn(
+            "[v0] To enable automatic two-way connections, update Firestore security rules (see FIREBASE_CONNECTION_FIX.md)",
+          )
+        } else {
+          console.error("[v0] Error updating requester profile:", requesterError)
+        }
       }
     } else {
-      // Reject - just remove the request from both users
       const updatedReceivedRequests = receivedRequests.filter((req) => req.id !== requestId)
       await updateDoc(currentProfileRef, {
         receivedConnectionRequests: updatedReceivedRequests,
         updatedAt: serverTimestamp(),
       })
 
-      // Remove from requester's sent requests
-      const requesterProfileRef = doc(db, "profiles", request.fromUserId)
-      const requesterProfileSnap = await getDoc(requesterProfileRef)
+      try {
+        const requesterProfileRef = doc(db, "profiles", request.fromUserId)
+        const requesterProfileSnap = await getDoc(requesterProfileRef)
 
-      if (requesterProfileSnap.exists()) {
-        const requesterData = requesterProfileSnap.data() as UserProfile
-        const requesterSentRequests = requesterData.sentConnectionRequests || []
-        const updatedSentRequests = requesterSentRequests.filter((req) => req.id !== requestId)
+        if (requesterProfileSnap.exists()) {
+          const requesterData = requesterProfileSnap.data() as UserProfile
+          const requesterSentRequests = requesterData.sentConnectionRequests || []
+          const updatedSentRequests = requesterSentRequests.filter((req) => req.id !== requestId)
 
-        await updateDoc(requesterProfileRef, {
-          sentConnectionRequests: updatedSentRequests,
-          updatedAt: serverTimestamp(),
-        })
+          await updateDoc(requesterProfileRef, {
+            sentConnectionRequests: updatedSentRequests,
+            updatedAt: serverTimestamp(),
+          })
+
+          console.log("[v0] Request removed from requester's sent requests")
+        }
+      } catch (requesterError: any) {
+        if (requesterError?.code === "permission-denied") {
+          console.warn("[v0] Could not update requester's profile due to permissions")
+        }
       }
+
+      console.log("[v0] Connection request rejected")
     }
 
     console.log("[v0] Connection request responded successfully")
@@ -728,8 +823,81 @@ export async function respondToConnectionRequest(
     console.error("[v0] Error responding to connection request:", error)
     if (error?.code === "permission-denied") {
       console.error("[v0] Firestore permission denied - check security rules")
+      console.error(
+        "[v0] Make sure you've updated your Firestore security rules as described in FIREBASE_CONNECTION_FIX.md",
+      )
     }
     throw error
+  }
+}
+
+export async function syncAcceptedConnections(userId: string): Promise<number> {
+  if (!isFirebaseConfigured() || !db) {
+    return 0
+  }
+
+  try {
+    console.log("[v0] Syncing accepted connections for user:", userId)
+
+    const profileRef = doc(db, "profiles", userId)
+    const profileSnap = await getDoc(profileRef)
+
+    if (!profileSnap.exists()) {
+      return 0
+    }
+
+    const profile = profileSnap.data() as UserProfile
+    const sentRequests = profile.sentConnectionRequests || []
+    const existingConnections = profile.connections || []
+    const existingConnectionIds = new Set(existingConnections.map((c) => c.userId))
+
+    const acceptedRequests = sentRequests.filter(
+      (req) => req.status === "accepted" && !existingConnectionIds.has(req.toUserId),
+    )
+
+    if (acceptedRequests.length === 0) {
+      console.log("[v0] No new accepted connections to sync")
+      return 0
+    }
+
+    const newConnections: Connection[] = []
+    for (const req of acceptedRequests) {
+      try {
+        const targetProfileRef = doc(db, "profiles", req.toUserId)
+        const targetProfileSnap = await getDoc(targetProfileRef)
+
+        if (targetProfileSnap.exists()) {
+          const targetProfile = targetProfileSnap.data() as UserProfile
+          newConnections.push({
+            id: req.toUserId,
+            userId: req.toUserId,
+            profileName: targetProfile.profileName,
+            profilePicture: targetProfile.profilePicture,
+            email: targetProfile.email,
+            connectedAt: req.respondedAt || Date.now(),
+          })
+        }
+      } catch (error) {
+        console.warn("[v0] Could not fetch profile for accepted connection:", req.toUserId)
+      }
+    }
+
+    if (newConnections.length > 0) {
+      const updatedSentRequests = sentRequests.filter((req) => req.status !== "accepted")
+
+      await updateDoc(profileRef, {
+        connections: [...existingConnections, ...newConnections],
+        sentConnectionRequests: updatedSentRequests,
+        updatedAt: serverTimestamp(),
+      })
+
+      console.log("[v0] Synced", newConnections.length, "accepted connections")
+    }
+
+    return newConnections.length
+  } catch (error) {
+    console.error("[v0] Error syncing accepted connections:", error)
+    return 0
   }
 }
 
@@ -747,7 +915,6 @@ export async function cancelConnectionRequest(currentUserId: string, targetUserI
   try {
     console.log("[v0] Canceling connection request to:", targetUserId)
 
-    // Get current user's profile
     const currentProfileRef = doc(db, "profiles", currentUserId)
     const currentProfileSnap = await getDoc(currentProfileRef)
 
@@ -759,7 +926,6 @@ export async function cancelConnectionRequest(currentUserId: string, targetUserI
     const currentProfile = currentProfileSnap.data() as UserProfile
     const sentRequests = currentProfile.sentConnectionRequests || []
 
-    // Find the request to cancel
     const requestToCancel = sentRequests.find((req) => req.toUserId === targetUserId && req.status === "pending")
 
     if (!requestToCancel) {
@@ -767,27 +933,11 @@ export async function cancelConnectionRequest(currentUserId: string, targetUserI
       return
     }
 
-    // Remove from sender's sent requests
     const updatedSentRequests = sentRequests.filter((req) => req.id !== requestToCancel.id)
     await updateDoc(currentProfileRef, {
       sentConnectionRequests: updatedSentRequests,
       updatedAt: serverTimestamp(),
     })
-
-    // Remove from recipient's received requests
-    const targetProfileRef = doc(db, "profiles", targetUserId)
-    const targetProfileSnap = await getDoc(targetProfileRef)
-
-    if (targetProfileSnap.exists()) {
-      const targetProfile = targetProfileSnap.data() as UserProfile
-      const receivedRequests = targetProfile.receivedConnectionRequests || []
-      const updatedReceivedRequests = receivedRequests.filter((req) => req.id !== requestToCancel.id)
-
-      await updateDoc(targetProfileRef, {
-        receivedConnectionRequests: updatedReceivedRequests,
-        updatedAt: serverTimestamp(),
-      })
-    }
 
     console.log("[v0] Connection request canceled successfully")
   } catch (error: any) {
@@ -819,8 +969,6 @@ export async function removeConnection(currentUserId: string, targetUserId: stri
   try {
     console.log("[v0] Removing connection:", targetUserId)
 
-    // Only remove from current user's connections (unilateral disconnect)
-    // Each user manages their own connections to avoid permission issues
     const currentProfileRef = doc(db, "profiles", currentUserId)
     const currentProfileSnap = await getDoc(currentProfileRef)
 

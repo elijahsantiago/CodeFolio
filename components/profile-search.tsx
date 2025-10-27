@@ -39,7 +39,7 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
 
     async function loadPublicProfiles() {
       try {
-        const profiles = await getPublicProfiles(12)
+        const profiles = await getPublicProfiles(12, isAdmin)
         setPublicProfiles(profiles)
       } catch (error) {
         console.error("Error loading public profiles:", error)
@@ -47,7 +47,7 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
     }
 
     loadPublicProfiles()
-  }, [firebaseAvailable])
+  }, [firebaseAvailable, isAdmin])
 
   const handleSearch = async () => {
     if (!firebaseAvailable) return
@@ -60,7 +60,7 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
     setLoading(true)
     try {
       console.log("[v0] Searching for:", searchTerm)
-      const results = await searchProfiles(searchTerm)
+      const results = await searchProfiles(searchTerm, 10, isAdmin)
       console.log("[v0] Search results:", results.length)
       setSearchResults(results)
     } catch (error) {
@@ -165,24 +165,23 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
                       {isAdminProfile && (
                         <div className="relative">
                           <style jsx>{`
-                            @keyframes rainbow-cycle {
-                              0% { background-position: 0% 50%; }
-                              50% { background-position: 100% 50%; }
-                              100% { background-position: 0% 50%; }
+                            @keyframes rainbow-border {
+                              0% { border-color: #ff0000; }
+                              14% { border-color: #ff7f00; }
+                              28% { border-color: #ffff00; }
+                              42% { border-color: #00ff00; }
+                              57% { border-color: #0000ff; }
+                              71% { border-color: #4b0082; }
+                              85% { border-color: #9400d3; }
+                              100% { border-color: #ff0000; }
                             }
-                            .rainbow-glow {
-                              background: linear-gradient(90deg, 
-                                #ff0000, #ff7f00, #ffff00, #00ff00, 
-                                #0000ff, #4b0082, #9400d3, #ff0000
-                              );
-                              background-size: 200% 200%;
-                              animation: rainbow-cycle 3s linear infinite;
+                            .rainbow-outline {
+                              animation: rainbow-border 3s linear infinite;
                             }
                           `}</style>
-                          <div className="absolute inset-0 rainbow-glow rounded-lg blur-md opacity-75" />
-                          <div className="relative flex items-center gap-1.5 px-2.5 py-1.5 rainbow-glow rounded-lg shadow-xl border-2 border-white/40">
-                            <Shield className="h-3.5 w-3.5 text-white drop-shadow-lg" />
-                            <span className="text-xs font-bold text-white drop-shadow-lg tracking-wide">ADMIN</span>
+                          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/95 backdrop-blur-sm rounded-lg border-2 rainbow-outline shadow-xl">
+                            <Shield className="h-3.5 w-3.5 text-gray-900" />
+                            <span className="text-xs font-bold text-gray-900 tracking-wide">ADMIN</span>
                           </div>
                         </div>
                       )}
@@ -198,9 +197,9 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
 
                 {isAdmin && !isAdminProfile && (
                   <Button
-                    variant="destructive"
+                    variant="ghost"
                     size="sm"
-                    className="absolute top-4 right-4 z-20 gap-2 shadow-lg"
+                    className="absolute top-4 right-4 z-20 gap-2 opacity-0 hover:opacity-100 transition-opacity bg-destructive/90 hover:bg-destructive text-destructive-foreground shadow-lg"
                     onClick={async (e) => {
                       e.stopPropagation()
                       if (confirm(`Are you sure you want to delete ${profile.profileName}'s profile?`)) {
@@ -209,15 +208,33 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
                           await adminDeleteProfile(user?.email || "", profile.id)
                           alert("Profile deleted successfully")
                           window.location.reload()
-                        } catch (error) {
+                        } catch (error: any) {
                           console.error("Error deleting profile:", error)
-                          alert("Failed to delete profile")
+                          if (error.message?.includes("Firestore security rules")) {
+                            alert(
+                              "Admin functionality requires Firestore security rules update.\n\n" +
+                                "Please follow these steps:\n" +
+                                "1. Open Firebase Console\n" +
+                                "2. Go to Firestore Database → Rules\n" +
+                                "3. Copy the rules from CONNECTION_SETUP.md\n" +
+                                "4. Publish the updated rules\n\n" +
+                                "See CONNECTION_SETUP.md in your project for detailed instructions.",
+                            )
+                          } else {
+                            alert(`Failed to delete profile: ${error.message}`)
+                          }
                         }
                       }
                     }}
                   >
-                    Delete Profile
+                    Delete
                   </Button>
+                )}
+
+                {isAdmin && !profile.isPublic && (
+                  <Badge className="absolute top-4 left-4 z-20 bg-yellow-500 text-black font-semibold shadow-lg">
+                    Non-Public
+                  </Badge>
                 )}
               </div>
 

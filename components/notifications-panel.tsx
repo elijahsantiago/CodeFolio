@@ -27,6 +27,7 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
   const { profile, updateProfile } = useProfile()
   const [requests, setRequests] = useState<ConnectionRequest[]>([])
   const [loading, setLoading] = useState<string | null>(null)
+  const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -34,14 +35,32 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
     }
   }, [user])
 
+  useEffect(() => {
+    if (isOpen && user) {
+      loadRequests()
+    }
+  }, [isOpen, user])
+
+  useEffect(() => {
+    if (!user) return
+
+    const interval = setInterval(() => {
+      loadRequests()
+    }, 10000) // Refresh every 10 seconds
+
+    return () => clearInterval(interval)
+  }, [user])
+
   const loadRequests = async () => {
     if (!user) return
 
     try {
+      console.log("[v0] Loading connection requests for user:", user.uid)
       const pendingRequests = await getPendingConnectionRequests(user.uid)
+      console.log("[v0] Found", pendingRequests.length, "pending requests")
       setRequests(pendingRequests)
     } catch (error) {
-      console.error("Error loading connection requests:", error)
+      console.error("[v0] Error loading connection requests:", error)
     }
   }
 
@@ -50,11 +69,12 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
 
     try {
       setLoading(request.id)
+      console.log("[v0] Responding to request:", request.id, accept ? "accept" : "reject")
 
       // Get requester profile
       const requesterProfile = await getUserProfile(request.fromUserId)
       if (!requesterProfile) {
-        console.error("Requester profile not found")
+        console.error("[v0] Requester profile not found")
         return
       }
 
@@ -69,8 +89,10 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
           await updateProfile(updatedProfile)
         }
       }
+
+      console.log("[v0] Request responded successfully")
     } catch (error) {
-      console.error("Error responding to connection request:", error)
+      console.error("[v0] Error responding to connection request:", error)
     } finally {
       setLoading(null)
     }
@@ -79,7 +101,7 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
   const pendingCount = requests.length
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="icon" className="relative bg-transparent" style={buttonStyle}>
           <Bell className="h-5 w-5" />
