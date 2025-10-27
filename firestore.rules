@@ -1,0 +1,112 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Helper function to check if user is an admin
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == 'e.santiago.e1@gmail.com' || 
+         request.auth.token.email == 'gabeasosa@gmail.com');
+    }
+    
+    // Profile rules
+    match /profiles/{userId} {
+      // Anyone can read public profiles
+      allow read: if true;
+      
+      // Users can only create their own profile
+      allow create: if isOwner(userId);
+      
+      // Users can update their own profile, admins can update any profile
+      allow update: if isOwner(userId) || isAdmin();
+      
+      // Users can delete their own profile, admins can delete any profile
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+    
+    // Posts rules
+    match /posts/{postId} {
+      // Anyone can read posts (public feed)
+      allow read: if true;
+      
+      // Authenticated users can create posts
+      allow create: if isAuthenticated() 
+        && request.resource.data.userId == request.auth.uid;
+      
+      allow update: if (
+        // Anyone can increment view count
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount', 'updatedAt']))
+        ||
+        // Authenticated users can update likes and likeCount
+        (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likeCount', 'updatedAt']))
+        ||
+        (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount', 'updatedAt']))
+        ||
+        // Owners and admins can update everything
+        (isOwner(resource.data.userId) || isAdmin())
+      );
+      
+      // Users can delete their own posts, admins can delete any post
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+      
+      // Likes subcollection
+      match /likes/{likeId} {
+        // Anyone can read likes
+        allow read: if true;
+        
+        // Authenticated users can add likes
+        allow create: if isAuthenticated() 
+          && request.resource.data.userId == request.auth.uid;
+        
+        // Users can delete their own likes
+        allow delete: if isAuthenticated() 
+          && resource.data.userId == request.auth.uid;
+      }
+      
+      // Comments subcollection
+      match /comments/{commentId} {
+        // Anyone can read comments
+        allow read: if true;
+        
+        allow create: if isAuthenticated() 
+          && request.resource.data.userId == request.auth.uid;
+        
+        // Users can update their own comments
+        allow update: if isAuthenticated() 
+          && resource.data.userId == request.auth.uid;
+        
+        // Users can delete their own comments, admins can delete any comment
+        allow delete: if (isAuthenticated() && resource.data.userId == request.auth.uid) 
+          || isAdmin();
+      }
+    }
+    
+    // Notifications rules
+    match /notifications/{notificationId} {
+      // Users can read their own notifications (both individual docs and queries)
+      allow read: if isAuthenticated() 
+        && (resource == null || resource.data.toUserId == request.auth.uid);
+      
+      // Authenticated users can create notifications
+      allow create: if isAuthenticated();
+      
+      // Users can update their own notifications (mark as read)
+      allow update: if isAuthenticated() 
+        && resource.data.toUserId == request.auth.uid;
+      
+      // Users can delete their own notifications
+      allow delete: if isAuthenticated() 
+        && resource.data.toUserId == request.auth.uid;
+    }
+  }
+}

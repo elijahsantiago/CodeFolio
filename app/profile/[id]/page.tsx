@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Loader2, AlertCircle, UserPlus, UserCheck } from "lucide-react"
 import { ProfileShowcase } from "@/components/profile-showcase"
@@ -13,6 +13,7 @@ import {
   hasPendingRequest,
   adminDeleteProfile,
   adminDeleteShowcaseItem,
+  adminResetConnections,
   type UserProfile,
 } from "@/lib/firestore"
 import { isFirebaseConfigured } from "@/lib/firebase"
@@ -22,6 +23,7 @@ import { useProfile } from "@/hooks/use-profile"
 export default function ProfileViewPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useAuth()
   const { profile: currentUserProfile, updateProfile } = useProfile()
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -32,6 +34,7 @@ export default function ProfileViewPage() {
   const [requestSent, setRequestSent] = useState(false)
   const [connectLoading, setConnectLoading] = useState(false)
   const [isOwnProfile, setIsOwnProfile] = useState(false) // Declare isOwnProfile here
+  const isAdmin = user?.email === "e.santiago.e1@gmail.com" || user?.email === "gabeasosa@gmail.com"
 
   useEffect(() => {
     setFirebaseAvailable(isFirebaseConfigured())
@@ -45,7 +48,8 @@ export default function ProfileViewPage() {
         setLoading(true)
         console.log("[v0] Loading profile for user:", params.id)
         const profileData = await getUserProfile(params.id as string)
-        if (profileData && profileData.isPublic) {
+
+        if (profileData && (profileData.isPublic || isAdmin)) {
           console.log("[v0] Profile loaded successfully")
           setProfile(profileData)
         } else {
@@ -60,7 +64,7 @@ export default function ProfileViewPage() {
     }
 
     loadProfile()
-  }, [firebaseAvailable, params.id])
+  }, [firebaseAvailable, params.id, isAdmin])
 
   useEffect(() => {
     if (currentUserProfile && profile && user) {
@@ -115,7 +119,6 @@ export default function ProfileViewPage() {
     }
   }
 
-  const isAdmin = user?.email === "e.santiago.e1@gmail.com" || user?.email === "gabeasosa@gmail.com"
   const canDelete = isAdmin && !isOwnProfile
 
   const handleDeleteProfile = async () => {
@@ -147,6 +150,39 @@ export default function ProfileViewPage() {
       }
     }
   }
+
+  const handleResetConnections = async () => {
+    if (!canDelete || !profile || !user) return
+
+    if (
+      confirm(
+        `Are you sure you want to reset all connections for ${profile.profileName}? This action cannot be undone.`,
+      )
+    ) {
+      try {
+        await adminResetConnections(user.email || "", profile.userId)
+        alert("Connections reset successfully")
+        window.location.reload()
+      } catch (error: any) {
+        console.error("Error resetting connections:", error)
+        if (error.message?.includes("Firestore security rules")) {
+          alert(
+            "Admin functionality requires Firestore security rules update.\n\n" +
+              "Please follow these steps:\n" +
+              "1. Open Firebase Console\n" +
+              "2. Go to Firestore Database → Rules\n" +
+              "3. Copy the rules from CONNECTION_SETUP.md\n" +
+              "4. Publish the updated rules\n\n" +
+              "See CONNECTION_SETUP.md in your project for detailed instructions.",
+          )
+        } else {
+          alert(`Failed to reset connections: ${error.message}`)
+        }
+      }
+    }
+  }
+
+  const fromFeed = searchParams.get("from") === "feed"
 
   if (!firebaseAvailable) {
     return (
@@ -207,16 +243,26 @@ export default function ProfileViewPage() {
     <div className="min-h-screen" style={pageBackgroundStyle}>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <Button onClick={() => router.push("/?discover=true")} variant="outline" size="sm" className="gap-2">
+          <Button
+            onClick={() => router.push(fromFeed ? "/?view=feed" : "/?discover=true")}
+            variant="outline"
+            size="sm"
+            className="gap-2"
+          >
             <ArrowLeft className="h-4 w-4" />
-            Back to Discover
+            {fromFeed ? "Back to Live Feed" : "Back to Discover"}
           </Button>
 
           <div className="flex items-center gap-2">
             {canDelete && (
-              <Button onClick={handleDeleteProfile} variant="destructive" size="sm" className="gap-2">
-                Delete Profile
-              </Button>
+              <>
+                <Button onClick={handleResetConnections} variant="outline" size="sm" className="gap-2 bg-transparent">
+                  Reset Connections
+                </Button>
+                <Button onClick={handleDeleteProfile} variant="destructive" size="sm" className="gap-2">
+                  Delete Profile
+                </Button>
+              </>
             )}
 
             {!isOwnProfile && user && (
@@ -251,7 +297,9 @@ export default function ProfileViewPage() {
         </div>
 
         <div className="mb-4">
-          <h1 className="text-2xl font-bold">{profile.profileName}'s Portfolio</h1>
+          <h1 className="text-2xl font-bold" style={{ color: profile.textColor || "#000000" }}>
+            {profile.profileName}'s Portfolio
+          </h1>
         </div>
 
         <ProfileShowcase
