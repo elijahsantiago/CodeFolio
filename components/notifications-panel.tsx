@@ -12,6 +12,7 @@ import {
   respondToConnectionRequest,
   getUserProfile,
   getPendingConnectionRequests,
+  getConnectionRequestCount,
   type ConnectionRequest,
 } from "@/lib/firestore"
 import { useAuth } from "@/hooks/use-auth"
@@ -26,12 +27,13 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
   const { user } = useAuth()
   const { profile, updateProfile } = useProfile()
   const [requests, setRequests] = useState<ConnectionRequest[]>([])
+  const [requestCount, setRequestCount] = useState(0)
   const [loading, setLoading] = useState<string | null>(null)
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
     if (user) {
-      loadRequests()
+      loadRequestCount()
     }
   }, [user])
 
@@ -45,20 +47,34 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
     if (!user) return
 
     const interval = setInterval(() => {
-      loadRequests()
-    }, 10000) // Refresh every 10 seconds
+      if (isOpen) {
+        loadRequests() // Load full data if panel is open
+      } else {
+        loadRequestCount() // Only load count if panel is closed
+      }
+    }, 30000) // Refresh every 30 seconds instead of 10
 
     return () => clearInterval(interval)
-  }, [user])
+  }, [user, isOpen])
+
+  const loadRequestCount = async () => {
+    if (!user) return
+
+    try {
+      const count = await getConnectionRequestCount(user.uid)
+      setRequestCount(count)
+    } catch (error) {
+      console.error("[v0] Error loading connection request count:", error)
+    }
+  }
 
   const loadRequests = async () => {
     if (!user) return
 
     try {
-      console.log("[v0] Loading connection requests for user:", user.uid)
       const pendingRequests = await getPendingConnectionRequests(user.uid)
-      console.log("[v0] Found", pendingRequests.length, "pending requests")
       setRequests(pendingRequests)
+      setRequestCount(pendingRequests.length)
     } catch (error) {
       console.error("[v0] Error loading connection requests:", error)
     }
@@ -69,7 +85,6 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
 
     try {
       setLoading(request.id)
-      console.log("[v0] Responding to request:", request.id, accept ? "accept" : "reject")
 
       // Get requester profile
       const requesterProfile = await getUserProfile(request.fromUserId)
@@ -89,8 +104,6 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
           await updateProfile(updatedProfile)
         }
       }
-
-      console.log("[v0] Request responded successfully")
     } catch (error) {
       console.error("[v0] Error responding to connection request:", error)
     } finally {
@@ -98,7 +111,7 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
     }
   }
 
-  const pendingCount = requests.length
+  const pendingCount = requestCount
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>

@@ -71,6 +71,22 @@ export interface ConnectionRequest {
   respondedAt?: number
 }
 
+export interface ProfileCard {
+  id: string
+  userId: string
+  profileName: string
+  profileDescription: string
+  profilePicture: string
+  layout: "default" | "minimal" | "grid" | "masonry" | "spotlight"
+  backgroundColor: string
+  backgroundImage: string
+  email: string
+  isPublic: boolean
+  showcaseItemCount: number
+  previewImages: string[] // First 4 showcase images
+  updatedAt: Timestamp
+}
+
 // Create or update user profile
 export async function saveUserProfile(userId: string, profileData: Partial<UserProfile>): Promise<void> {
   if (!isFirebaseConfigured()) {
@@ -261,6 +277,173 @@ export async function getPublicProfiles(maxResults = 20, isAdmin = false): Promi
       return []
     }
     console.error("Error getting public profiles:", error)
+    return []
+  }
+}
+
+export async function getPublicProfileCards(
+  maxResults = 20,
+  isAdmin = false,
+  startAfter?: any,
+): Promise<{
+  profiles: ProfileCard[]
+  lastDoc: any
+  hasMore: boolean
+}> {
+  if (!isFirebaseConfigured()) {
+    console.warn("Firebase not configured, returning empty public profiles")
+    return { profiles: [], lastDoc: null, hasMore: false }
+  }
+
+  if (!db) {
+    console.warn("Firestore database not initialized")
+    return { profiles: [], lastDoc: null, hasMore: false }
+  }
+
+  try {
+    const profilesRef = collection(db, "profiles")
+
+    let q
+    if (startAfter) {
+      q = isAdmin
+        ? query(profilesRef, orderBy("updatedAt", "desc"), limit(maxResults + 1), startAfter)
+        : query(
+            profilesRef,
+            where("isPublic", "==", true),
+            orderBy("updatedAt", "desc"),
+            limit(maxResults + 1),
+            startAfter,
+          )
+    } else {
+      q = isAdmin
+        ? query(profilesRef, orderBy("updatedAt", "desc"), limit(maxResults + 1))
+        : query(profilesRef, where("isPublic", "==", true), orderBy("updatedAt", "desc"), limit(maxResults + 1))
+    }
+
+    const querySnapshot = await getDocs(q)
+    const profiles: ProfileCard[] = []
+
+    // Check if there are more results
+    const hasMore = querySnapshot.docs.length > maxResults
+    const docsToProcess = hasMore ? querySnapshot.docs.slice(0, maxResults) : querySnapshot.docs
+
+    docsToProcess.forEach((doc) => {
+      const data = doc.data() as UserProfile
+
+      // Extract only first 4 image URLs from showcaseItems
+      const previewImages = data.showcaseItems
+        .filter((item) => item.type === "image" && item.content)
+        .slice(0, 4)
+        .map((item) => item.content)
+
+      profiles.push({
+        id: doc.id,
+        userId: data.userId,
+        profileName: data.profileName,
+        profileDescription: data.profileDescription,
+        profilePicture: data.profilePicture,
+        layout: data.layout,
+        backgroundColor: data.backgroundColor,
+        backgroundImage: data.backgroundImage,
+        email: data.email,
+        isPublic: data.isPublic,
+        showcaseItemCount: data.showcaseItems.length,
+        previewImages,
+        updatedAt: data.updatedAt,
+      })
+    })
+
+    const lastDoc = hasMore ? querySnapshot.docs[maxResults - 1] : null
+
+    return { profiles, lastDoc, hasMore }
+  } catch (error: any) {
+    if (error?.code === "permission-denied") {
+      console.warn("Firestore permission denied for public profiles - check security rules")
+      return { profiles: [], lastDoc: null, hasMore: false }
+    }
+    console.error("Error getting public profiles:", error)
+    return { profiles: [], lastDoc: null, hasMore: false }
+  }
+}
+
+export async function searchProfileCards(searchTerm: string, maxResults = 10, isAdmin = false): Promise<ProfileCard[]> {
+  if (!isFirebaseConfigured()) {
+    console.warn("Firebase not configured, returning empty search results")
+    return []
+  }
+
+  if (!db) {
+    console.warn("Firestore database not initialized")
+    return []
+  }
+
+  try {
+    console.log("[v0] Searching for profiles with term:", searchTerm, "Admin:", isAdmin)
+
+    const profilesRef = collection(db, "profiles")
+    const searchLower = searchTerm.toLowerCase()
+
+    // Fetch fewer profiles for search (30 instead of 50)
+    const q = isAdmin ? query(profilesRef, limit(30)) : query(profilesRef, where("isPublic", "==", true), limit(30))
+
+    const querySnapshot = await getDocs(q)
+    const profiles: ProfileCard[] = []
+
+    querySnapshot.forEach((doc) => {
+      const data = doc.data() as UserProfile
+      const profileNameLower = data.profileName.toLowerCase()
+
+      if (profileNameLower.includes(searchLower)) {
+        const previewImages = data.showcaseItems
+          .filter((item) => item.type === "image" && item.content)
+          .slice(0, 4)
+          .map((item) => item.content)
+
+        profiles.push({
+          id: doc.id,
+          userId: data.userId,
+          profileName: data.profileName,
+          profileDescription: data.profileDescription,
+          profilePicture: data.profilePicture,
+          layout: data.layout,
+          backgroundColor: data.backgroundColor,
+          backgroundImage: data.backgroundImage,
+          email: data.email,
+          isPublic: data.isPublic,
+          showcaseItemCount: data.showcaseItems.length,
+          previewImages,
+          updatedAt: data.updatedAt,
+        })
+      }
+    })
+
+    // Sort by relevance
+    profiles.sort((a, b) => {
+      const aName = a.profileName.toLowerCase()
+      const bName = b.profileName.toLowerCase()
+      const aExact = aName === searchLower
+      const bExact = bName === searchLower
+      const aStarts = aName.startsWith(searchLower)
+      const bStarts = bName.startsWith(searchLower)
+
+      if (aExact && !bExact) return -1
+      if (!aExact && bExact) return 1
+      if (aStarts && !bStarts) return -1
+      if (!aStarts && bStarts) return 1
+
+      const aTime = a.updatedAt?.toMillis?.() || 0
+      const bTime = b.updatedAt?.toMillis?.() || 0
+      return bTime - aTime
+    })
+
+    console.log("[v0] Found", profiles.length, "matching profiles")
+    return profiles.slice(0, maxResults)
+  } catch (error: any) {
+    if (error?.code === "permission-denied") {
+      console.warn("Firestore permission denied for search - check security rules")
+      return []
+    }
+    console.error("Error searching profiles:", error)
     return []
   }
 }
@@ -617,6 +800,30 @@ export async function sendConnectionRequest(
       )
     }
     throw error
+  }
+}
+
+export async function getConnectionRequestCount(userId: string): Promise<number> {
+  if (!isFirebaseConfigured() || !db) {
+    return 0
+  }
+
+  try {
+    const profileRef = doc(db, "profiles", userId)
+    const profileSnap = await getDoc(profileRef)
+
+    if (!profileSnap.exists()) {
+      return 0
+    }
+
+    const profile = profileSnap.data() as UserProfile
+    const receivedRequests = profile.receivedConnectionRequests || []
+
+    // Count only pending requests
+    return receivedRequests.filter((req) => req.status === "pending").length
+  } catch (error: any) {
+    console.error("[v0] Error fetching connection request count:", error)
+    return 0
   }
 }
 
