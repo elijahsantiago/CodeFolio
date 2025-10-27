@@ -131,6 +131,7 @@ export default function HomePage() {
   useEffect(() => {
     const discover = searchParams.get("discover")
     const postId = searchParams.get("post")
+    const view = searchParams.get("view")
 
     if (discover === "true") {
       setShowSearch(true)
@@ -141,6 +142,11 @@ export default function HomePage() {
       setShowFeed(true)
       setShowSearch(false)
       setHighlightPostId(postId)
+      window.history.replaceState({}, "", "/")
+    } else if (view === "feed") {
+      console.log("[v0] Navigating to live feed")
+      setShowFeed(true)
+      setShowSearch(false)
       window.history.replaceState({}, "", "/")
     }
   }, [searchParams])
