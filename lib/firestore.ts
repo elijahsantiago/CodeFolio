@@ -4,6 +4,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc, // Added deleteDoc import for modular SDK
   query,
   where,
   getDocs,
@@ -1502,11 +1503,10 @@ export async function deletePost(postId: string, userId: string): Promise<void> 
     const commentsRef = collection(db, "posts", postId, "comments")
     const commentsSnapshot = await getDocs(commentsRef)
 
-    const deletePromises = commentsSnapshot.docs.map((doc) => doc.ref.delete())
+    const deletePromises = commentsSnapshot.docs.map((commentDoc) => deleteDoc(commentDoc.ref))
     await Promise.all(deletePromises)
 
-    // Delete the post
-    await postRef.delete()
+    await deleteDoc(postRef)
     console.log("[v0] Post deleted successfully:", postId)
   } catch (error: any) {
     console.error("[v0] Error deleting post:", error)
@@ -1541,11 +1541,10 @@ export async function adminDeletePost(adminEmail: string, postId: string): Promi
     const commentsRef = collection(db, "posts", postId, "comments")
     const commentsSnapshot = await getDocs(commentsRef)
 
-    const deletePromises = commentsSnapshot.docs.map((doc) => doc.ref.delete())
+    const deletePromises = commentsSnapshot.docs.map((commentDoc) => deleteDoc(commentDoc.ref))
     await Promise.all(deletePromises)
 
-    // Delete the post
-    await postRef.delete()
+    await deleteDoc(postRef)
     console.log("[v0] Post deleted successfully by admin:", postId)
   } catch (error: any) {
     console.error("[v0] Error deleting post:", error)
@@ -1581,8 +1580,7 @@ export async function adminDeleteComment(adminEmail: string, postId: string, com
       throw new Error("Comment not found")
     }
 
-    // Delete the comment
-    await commentRef.delete()
+    await deleteDoc(commentRef)
 
     // Update comment count on post
     const postRef = doc(db, "posts", postId)
