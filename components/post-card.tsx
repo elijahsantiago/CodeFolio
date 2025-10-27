@@ -11,6 +11,7 @@ import {
   getComments,
   incrementPostView,
   deletePost,
+  deleteComment, // Added deleteComment import
   adminDeletePost,
   adminDeleteComment,
   type Post,
@@ -159,7 +160,11 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
     if (!confirm("Are you sure you want to delete this comment?")) return
 
     try {
-      await adminDeleteComment(user?.email || "", post.id, commentId)
+      if (isAdmin && currentUserId !== commentUserId) {
+        await adminDeleteComment(user?.email || "", post.id, commentId)
+      } else {
+        await deleteComment(post.id, commentId, currentUserId)
+      }
       setComments((prev) => prev.filter((c) => c.id !== commentId))
       setCommentCount((prev) => Math.max(0, prev - 1))
     } catch (error) {

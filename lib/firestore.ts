@@ -1605,3 +1605,49 @@ export async function adminDeleteComment(adminEmail: string, postId: string, com
     throw error
   }
 }
+
+// Delete user's own comment
+export async function deleteComment(postId: string, commentId: string, userId: string): Promise<void> {
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase not configured")
+  }
+
+  if (!db) {
+    throw new Error("Firestore database not initialized")
+  }
+
+  try {
+    const commentRef = doc(db, "posts", postId, "comments", commentId)
+    const commentSnap = await getDoc(commentRef)
+
+    if (!commentSnap.exists()) {
+      throw new Error("Comment not found")
+    }
+
+    const comment = commentSnap.data() as Comment
+
+    // Check if user owns the comment
+    if (comment.userId !== userId) {
+      throw new Error("Unauthorized: You can only delete your own comments")
+    }
+
+    await deleteDoc(commentRef)
+
+    // Update comment count on post
+    const postRef = doc(db, "posts", postId)
+    const postSnap = await getDoc(postRef)
+
+    if (postSnap.exists()) {
+      const post = postSnap.data() as Post
+      await updateDoc(postRef, {
+        commentCount: Math.max(0, (post.commentCount || 0) - 1),
+        updatedAt: serverTimestamp(),
+      })
+    }
+
+    console.log("[v0] Comment deleted successfully:", commentId)
+  } catch (error: any) {
+    console.error("[v0] Error deleting comment:", error)
+    throw error
+  }
+}
