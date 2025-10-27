@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { PostCard } from "@/components/post-card"
 import { CreatePostForm } from "@/components/create-post-form"
 import { Button } from "@/components/ui/button"
@@ -8,7 +8,12 @@ import { Loader2, RefreshCw } from "lucide-react"
 import { getPosts, type Post } from "@/lib/firestore"
 import { useAuth } from "@/hooks/use-auth"
 
-export function LiveFeed() {
+interface LiveFeedProps {
+  highlightPostId?: string | null
+  onPostHighlighted?: () => void
+}
+
+export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -16,6 +21,7 @@ export function LiveFeed() {
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const { user } = useAuth()
+  const postRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
 
   const loadPosts = async (loadMore = false) => {
     try {
@@ -47,6 +53,22 @@ export function LiveFeed() {
   useEffect(() => {
     loadPosts()
   }, [])
+
+  useEffect(() => {
+    if (highlightPostId && posts.length > 0 && postRefs.current[highlightPostId]) {
+      // Wait a bit for rendering to complete
+      setTimeout(() => {
+        const element = postRefs.current[highlightPostId]
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" })
+          // Clear highlight after scrolling
+          if (onPostHighlighted) {
+            setTimeout(() => onPostHighlighted(), 2000)
+          }
+        }
+      }, 100)
+    }
+  }, [highlightPostId, posts, onPostHighlighted])
 
   const handleRefresh = () => {
     setRefreshing(true)
@@ -99,7 +121,15 @@ export function LiveFeed() {
         ) : (
           <>
             {posts.map((post) => (
-              <PostCard key={post.id} post={post} currentUserId={user?.uid} onPostDeleted={handlePostDeleted} />
+              <div
+                key={post.id}
+                ref={(el) => {
+                  postRefs.current[post.id] = el
+                }}
+                className={highlightPostId === post.id ? "ring-2 ring-primary rounded-xl transition-all" : ""}
+              >
+                <PostCard post={post} currentUserId={user?.uid} onPostDeleted={handlePostDeleted} />
+              </div>
             ))}
 
             {hasMore && (

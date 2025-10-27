@@ -16,6 +16,7 @@ export default function HomePage() {
   const [isEditing, setIsEditing] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [showFeed, setShowFeed] = useState(false)
+  const [highlightPostId, setHighlightPostId] = useState<string | null>(null)
   const { user, loading: authLoading, logout } = useAuth()
   const { profile, loading: profileLoading, updateProfile } = useProfile()
   const router = useRouter()
@@ -130,6 +131,13 @@ export default function HomePage() {
     const urlParams = new URLSearchParams(window.location.search)
     if (urlParams.get("discover") === "true") {
       setShowSearch(true)
+      window.history.replaceState({}, "", "/")
+    }
+    const postId = urlParams.get("post")
+    if (postId) {
+      setShowFeed(true)
+      setShowSearch(false)
+      setHighlightPostId(postId)
       window.history.replaceState({}, "", "/")
     }
   }, [])
@@ -317,7 +325,7 @@ export default function HomePage() {
         </div>
 
         {showFeed ? (
-          <LiveFeed />
+          <LiveFeed highlightPostId={highlightPostId} onPostHighlighted={() => setHighlightPostId(null)} />
         ) : showSearch ? (
           <ProfileSearch />
         ) : (
