@@ -297,7 +297,9 @@ export default function ProfileViewPage() {
         </div>
 
         <div className="mb-4">
-          <h1 className="text-2xl font-bold">{profile.profileName}'s Portfolio</h1>
+          <h1 className="text-2xl font-bold" style={{ color: profile.textColor || "#000000" }}>
+            {profile.profileName}'s Portfolio
+          </h1>
         </div>
 
         <ProfileShowcase
