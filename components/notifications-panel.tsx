@@ -15,7 +15,6 @@ import {
   getConnectionRequestCount,
   getUserNotifications,
   getUnreadNotificationCount,
-  markNotificationAsRead,
   deleteNotification,
   type ConnectionRequest,
   type Notification,
@@ -126,8 +125,7 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
 
   const handleNotificationClick = async (notification: Notification) => {
     try {
-      // Mark as read
-      await markNotificationAsRead(notification.id)
+      await deleteNotification(notification.id)
 
       // Navigate to the post
       if (notification.postId) {
