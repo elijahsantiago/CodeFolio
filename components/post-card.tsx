@@ -22,6 +22,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { formatDistanceToNow } from "date-fns"
 import { doc, onSnapshot } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import { useRouter } from "next/navigation"
 
 interface PostCardProps {
   post: Post
@@ -42,6 +43,7 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
   const [deleting, setDeleting] = useState(false)
   const { profile } = useProfile()
   const { user } = useAuth()
+  const router = useRouter()
 
   const isAdmin = user?.email === "e.santiago.e1@gmail.com" || user?.email === "gabeasosa@gmail.com"
   const canDeletePost = currentUserId === post.userId || isAdmin
@@ -221,6 +223,10 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
   const topLevelComments = comments.filter((c) => !c.parentCommentId)
   const getReplies = (commentId: string) => comments.filter((c) => c.parentCommentId === commentId)
 
+  const navigateToProfile = (userId: string) => {
+    router.push(`/profile/${userId}`)
+  }
+
   return (
     <Card className="p-6 space-y-4">
       <div className="flex items-start justify-between">
@@ -228,10 +234,13 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
           <img
             src={post.userPicture || "/placeholder.svg?height=40&width=40&query=profile avatar"}
             alt={post.userName}
-            className="w-10 h-10 rounded-full object-cover"
+            className="w-10 h-10 rounded-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => navigateToProfile(post.userId)}
           />
           <div>
-            <p className="font-semibold">{post.userName}</p>
+            <p className="font-semibold cursor-pointer hover:underline" onClick={() => navigateToProfile(post.userId)}>
+              {post.userName}
+            </p>
             <p className="text-sm text-muted-foreground">{formatTimestamp(post.createdAt)}</p>
           </div>
         </div>
@@ -303,12 +312,18 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
                           <img
                             src={comment.userPicture || "/placeholder.svg?height=32&width=32&query=profile avatar"}
                             alt={comment.userName}
-                            className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                            className="w-8 h-8 rounded-full object-cover flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => navigateToProfile(comment.userId)}
                           />
                           <div className="flex-1">
                             <div className="bg-muted rounded-lg p-3">
                               <div className="flex items-center gap-2 mb-1">
-                                <p className="font-semibold text-sm">{comment.userName}</p>
+                                <p
+                                  className="font-semibold text-sm cursor-pointer hover:underline"
+                                  onClick={() => navigateToProfile(comment.userId)}
+                                >
+                                  {comment.userName}
+                                </p>
                                 <p className="text-xs text-muted-foreground">{formatTimestamp(comment.createdAt)}</p>
                                 {canDeleteComment && (
                                   <Button
@@ -348,12 +363,18 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
                                       reply.userPicture || "/placeholder.svg?height=28&width=28&query=profile avatar"
                                     }
                                     alt={reply.userName}
-                                    className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                                    className="w-7 h-7 rounded-full object-cover flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={() => navigateToProfile(reply.userId)}
                                   />
                                   <div className="flex-1">
                                     <div className="bg-muted/70 rounded-lg p-2.5">
                                       <div className="flex items-center gap-2 mb-1">
-                                        <p className="font-semibold text-xs">{reply.userName}</p>
+                                        <p
+                                          className="font-semibold text-xs cursor-pointer hover:underline"
+                                          onClick={() => navigateToProfile(reply.userId)}
+                                        >
+                                          {reply.userName}
+                                        </p>
                                         <p className="text-xs text-muted-foreground">
                                           {formatTimestamp(reply.createdAt)}
                                         </p>
