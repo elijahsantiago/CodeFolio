@@ -4,6 +4,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc, // Added deleteDoc import for modular SDK
   query,
   where,
   getDocs,
@@ -1200,5 +1201,650 @@ export async function removeConnection(currentUserId: string, targetUserId: stri
       console.error("[v0] Firestore permission denied - check security rules")
     }
     throw error
+  }
+}
+
+export async function createPost(
+  userId: string,
+  userName: string,
+  userPicture: string,
+  content: string,
+  imageUrl?: string,
+): Promise<string> {
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase not configured")
+  }
+
+  if (!db) {
+    throw new Error("Firestore database not initialized")
+  }
+
+  if (!content.trim()) {
+    throw new Error("Post content cannot be empty")
+  }
+
+  try {
+    console.log("[v0] Creating new post for user:", userId)
+    const postsRef = collection(db, "posts")
+    const newPostRef = doc(postsRef)
+
+    const newPost: Omit<Post, "id"> = {
+      userId,
+      userName,
+      userPicture,
+      content: content.trim(),
+      imageUrl: imageUrl || undefined,
+      likes: [],
+      likeCount: 0,
+      commentCount: 0,
+      viewCount: 0,
+      createdAt: serverTimestamp() as Timestamp,
+      updatedAt: serverTimestamp() as Timestamp,
+    }
+
+    await setDoc(newPostRef, newPost)
+    console.log("[v0] Post created successfully:", newPostRef.id)
+    return newPostRef.id
+  } catch (error: any) {
+    console.error("[v0] Error creating post:", error)
+    throw error
+  }
+}
+
+export async function getPosts(
+  maxResults = 20,
+  startAfter?: any,
+): Promise<{
+  posts: Post[]
+  lastDoc: any
+  hasMore: boolean
+}> {
+  if (!isFirebaseConfigured()) {
+    return { posts: [], lastDoc: null, hasMore: false }
+  }
+
+  if (!db) {
+    return { posts: [], lastDoc: null, hasMore: false }
+  }
+
+  try {
+    const postsRef = collection(db, "posts")
+
+    let q
+    if (startAfter) {
+      q = query(postsRef, orderBy("createdAt", "desc"), limit(maxResults + 1), startAfter)
+    } else {
+      q = query(postsRef, orderBy("createdAt", "desc"), limit(maxResults + 1))
+    }
+
+    const querySnapshot = await getDocs(q)
+    const posts: Post[] = []
+
+    const hasMore = querySnapshot.docs.length > maxResults
+    const docsToProcess = hasMore ? querySnapshot.docs.slice(0, maxResults) : querySnapshot.docs
+
+    docsToProcess.forEach((doc) => {
+      posts.push({ id: doc.id, ...doc.data() } as Post)
+    })
+
+    const lastDoc = hasMore ? querySnapshot.docs[maxResults - 1] : null
+
+    return { posts, lastDoc, hasMore }
+  } catch (error: any) {
+    console.error("[v0] Error getting posts:", error)
+    return { posts: [], lastDoc: null, hasMore: false }
+  }
+}
+
+export async function toggleLikePost(
+  postId: string,
+  userId: string,
+  userName: string,
+  userPicture: string,
+): Promise<void> {
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase not configured")
+  }
+
+  if (!db) {
+    throw new Error("Firestore database not initialized")
+  }
+
+  try {
+    const postRef = doc(db, "posts", postId)
+    const postSnap = await getDoc(postRef)
+
+    if (!postSnap.exists()) {
+      throw new Error("Post not found")
+    }
+
+    const post = postSnap.data() as Post
+    const likes = post.likes || []
+    const isLiked = likes.includes(userId)
+
+    if (isLiked) {
+      // Unlike
+      await updateDoc(postRef, {
+        likes: likes.filter((id) => id !== userId),
+        likeCount: Math.max(0, (post.likeCount || 0) - 1),
+        updatedAt: serverTimestamp(),
+      })
+    } else {
+      // Like
+      await updateDoc(postRef, {
+        likes: [...likes, userId],
+        likeCount: (post.likeCount || 0) + 1,
+        updatedAt: serverTimestamp(),
+      })
+
+      if (post.userId !== userId) {
+        try {
+          await createNotification({
+            type: "post_like",
+            fromUserId: userId,
+            fromUserName: userName,
+            fromUserPicture: userPicture,
+            toUserId: post.userId,
+            postId,
+            read: false,
+            createdAt: Date.now(),
+          })
+        } catch (notificationError) {
+          console.error("[v0] Error creating like notification:", notificationError)
+          // Don't fail the like if notification fails
+        }
+      }
+    }
+  } catch (error: any) {
+    console.error("[v0] Error toggling like:", error)
+    throw error
+  }
+}
+
+export async function addComment(
+  postId: string,
+  userId: string,
+  userName: string,
+  userPicture: string,
+  content: string,
+  parentCommentId?: string,
+): Promise<string> {
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase not configured")
+  }
+
+  if (!db) {
+    throw new Error("Firestore database not initialized")
+  }
+
+  if (!content.trim()) {
+    throw new Error("Comment content cannot be empty")
+  }
+
+  try {
+    const commentsRef = collection(db, "posts", postId, "comments")
+    const newCommentRef = doc(commentsRef)
+
+    const newComment: Omit<Comment, "id"> = {
+      postId,
+      userId,
+      userName,
+      userPicture,
+      content: content.trim(),
+      ...(parentCommentId && { parentCommentId }),
+      createdAt: serverTimestamp() as Timestamp,
+    }
+
+    await setDoc(newCommentRef, newComment)
+
+    // Update comment count on post
+    const postRef = doc(db, "posts", postId)
+    const postSnap = await getDoc(postRef)
+
+    if (postSnap.exists()) {
+      const post = postSnap.data() as Post
+      await updateDoc(postRef, {
+        commentCount: (post.commentCount || 0) + 1,
+        updatedAt: serverTimestamp(),
+      })
+
+      if (parentCommentId) {
+        try {
+          const parentCommentRef = doc(db, "posts", postId, "comments", parentCommentId)
+          const parentCommentSnap = await getDoc(parentCommentRef)
+
+          if (parentCommentSnap.exists()) {
+            const parentComment = parentCommentSnap.data() as Comment
+
+            // Send notification to the person whose comment was replied to
+            if (parentComment.userId !== userId) {
+              await createNotification({
+                type: "comment_reply",
+                fromUserId: userId,
+                fromUserName: userName,
+                fromUserPicture: userPicture,
+                toUserId: parentComment.userId,
+                postId,
+                commentId: newCommentRef.id,
+                commentContent: content.trim().substring(0, 100),
+                read: false,
+                createdAt: Date.now(),
+              })
+            }
+
+            // Also send notification to post creator if they're not the commenter or the parent comment author
+            if (post.userId !== userId && post.userId !== parentComment.userId) {
+              await createNotification({
+                type: "comment_reply",
+                fromUserId: userId,
+                fromUserName: userName,
+                fromUserPicture: userPicture,
+                toUserId: post.userId,
+                postId,
+                commentId: newCommentRef.id,
+                commentContent: content.trim().substring(0, 100),
+                read: false,
+                createdAt: Date.now(),
+              })
+            }
+          }
+        } catch (notificationError) {
+          console.error("[v0] Error creating reply notification:", notificationError)
+          // Don't fail the comment creation if notification fails
+        }
+      }
+    }
+
+    return newCommentRef.id
+  } catch (error: any) {
+    console.error("[v0] Error adding comment:", error)
+    throw error
+  }
+}
+
+export async function getComments(postId: string, maxResults = 50): Promise<Comment[]> {
+  if (!isFirebaseConfigured()) {
+    return []
+  }
+
+  if (!db) {
+    return []
+  }
+
+  try {
+    const commentsRef = collection(db, "posts", postId, "comments")
+    const q = query(commentsRef, orderBy("createdAt", "asc"), limit(maxResults))
+
+    const querySnapshot = await getDocs(q)
+    const comments: Comment[] = []
+
+    querySnapshot.forEach((doc) => {
+      comments.push({ id: doc.id, ...doc.data() } as Comment)
+    })
+
+    return comments
+  } catch (error: any) {
+    console.error("[v0] Error getting comments:", error)
+    return []
+  }
+}
+
+export async function getPostById(postId: string): Promise<Post | null> {
+  if (!isFirebaseConfigured()) {
+    return null
+  }
+
+  if (!db) {
+    return null
+  }
+
+  try {
+    const postRef = doc(db, "posts", postId)
+    const postSnap = await getDoc(postRef)
+
+    if (postSnap.exists()) {
+      return { id: postSnap.id, ...postSnap.data() } as Post
+    }
+
+    return null
+  } catch (error: any) {
+    console.error("[v0] Error getting post:", error)
+    return null
+  }
+}
+
+export async function incrementPostView(postId: string): Promise<void> {
+  if (!isFirebaseConfigured()) {
+    return
+  }
+
+  if (!db) {
+    return
+  }
+
+  try {
+    const postRef = doc(db, "posts", postId)
+    const postSnap = await getDoc(postRef)
+
+    if (postSnap.exists()) {
+      const post = postSnap.data() as Post
+      await updateDoc(postRef, {
+        viewCount: (post.viewCount || 0) + 1,
+        updatedAt: serverTimestamp(),
+      })
+    }
+  } catch (error: any) {
+    console.error("[v0] Error incrementing view count:", error)
+  }
+}
+
+export async function deletePost(postId: string, userId: string): Promise<void> {
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase not configured")
+  }
+
+  if (!db) {
+    throw new Error("Firestore database not initialized")
+  }
+
+  try {
+    const postRef = doc(db, "posts", postId)
+    const postSnap = await getDoc(postRef)
+
+    if (!postSnap.exists()) {
+      throw new Error("Post not found")
+    }
+
+    const post = postSnap.data() as Post
+
+    // Check if user owns the post
+    if (post.userId !== userId) {
+      throw new Error("Unauthorized: You can only delete your own posts")
+    }
+
+    // Delete all comments first
+    const commentsRef = collection(db, "posts", postId, "comments")
+    const commentsSnapshot = await getDocs(commentsRef)
+
+    const deletePromises = commentsSnapshot.docs.map((commentDoc) => deleteDoc(commentDoc.ref))
+    await Promise.all(deletePromises)
+
+    await deleteDoc(postRef)
+    console.log("[v0] Post deleted successfully:", postId)
+  } catch (error: any) {
+    console.error("[v0] Error deleting post:", error)
+    throw error
+  }
+}
+
+// Admin function to delete any post
+export async function adminDeletePost(adminEmail: string, postId: string): Promise<void> {
+  if (adminEmail !== "e.santiago.e1@gmail.com" && adminEmail !== "gabeasosa@gmail.com") {
+    throw new Error("Unauthorized: Admin access required")
+  }
+
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase not configured")
+  }
+
+  if (!db) {
+    throw new Error("Firestore database not initialized")
+  }
+
+  try {
+    console.log("[v0] Admin deleting post:", postId)
+    const postRef = doc(db, "posts", postId)
+    const postSnap = await getDoc(postRef)
+
+    if (!postSnap.exists()) {
+      throw new Error("Post not found")
+    }
+
+    // Delete all comments first
+    const commentsRef = collection(db, "posts", postId, "comments")
+    const commentsSnapshot = await getDocs(commentsRef)
+
+    const deletePromises = commentsSnapshot.docs.map((commentDoc) => deleteDoc(commentDoc.ref))
+    await Promise.all(deletePromises)
+
+    await deleteDoc(postRef)
+    console.log("[v0] Post deleted successfully by admin:", postId)
+  } catch (error: any) {
+    console.error("[v0] Error deleting post:", error)
+    if (error?.code === "permission-denied") {
+      throw new Error(
+        "Admin permissions not configured in Firestore. Please update your Firestore security rules to enable admin functionality.",
+      )
+    }
+    throw error
+  }
+}
+
+// Admin function to delete any comment
+export async function adminDeleteComment(adminEmail: string, postId: string, commentId: string): Promise<void> {
+  if (adminEmail !== "e.santiago.e1@gmail.com" && adminEmail !== "gabeasosa@gmail.com") {
+    throw new Error("Unauthorized: Admin access required")
+  }
+
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase not configured")
+  }
+
+  if (!db) {
+    throw new Error("Firestore database not initialized")
+  }
+
+  try {
+    console.log("[v0] Admin deleting comment:", commentId, "from post:", postId)
+    const commentRef = doc(db, "posts", postId, "comments", commentId)
+    const commentSnap = await getDoc(commentRef)
+
+    if (!commentSnap.exists()) {
+      throw new Error("Comment not found")
+    }
+
+    await deleteDoc(commentRef)
+
+    // Update comment count on post
+    const postRef = doc(db, "posts", postId)
+    const postSnap = await getDoc(postRef)
+
+    if (postSnap.exists()) {
+      const post = postSnap.data() as Post
+      await updateDoc(postRef, {
+        commentCount: Math.max(0, (post.commentCount || 0) - 1),
+        updatedAt: serverTimestamp(),
+      })
+    }
+
+    console.log("[v0] Comment deleted successfully by admin:", commentId)
+  } catch (error: any) {
+    console.error("[v0] Error deleting comment:", error)
+    if (error?.code === "permission-denied") {
+      throw new Error(
+        "Admin permissions not configured in Firestore. Please update your Firestore security rules to enable admin functionality.",
+      )
+    }
+    throw error
+  }
+}
+
+// Delete user's own comment
+export async function deleteComment(postId: string, commentId: string, userId: string): Promise<void> {
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase not configured")
+  }
+
+  if (!db) {
+    throw new Error("Firestore database not initialized")
+  }
+
+  try {
+    const commentRef = doc(db, "posts", postId, "comments", commentId)
+    const commentSnap = await getDoc(commentRef)
+
+    if (!commentSnap.exists()) {
+      throw new Error("Comment not found")
+    }
+
+    const comment = commentSnap.data() as Comment
+
+    // Check if user owns the comment
+    if (comment.userId !== userId) {
+      throw new Error("Unauthorized: You can only delete your own comments")
+    }
+
+    await deleteDoc(commentRef)
+
+    // Update comment count on post
+    const postRef = doc(db, "posts", postId)
+    const postSnap = await getDoc(postRef)
+
+    if (postSnap.exists()) {
+      const post = postSnap.data() as Post
+      await updateDoc(postRef, {
+        commentCount: Math.max(0, (post.commentCount || 0) - 1),
+        updatedAt: serverTimestamp(),
+      })
+    }
+
+    console.log("[v0] Comment deleted successfully:", commentId)
+  } catch (error: any) {
+    console.error("[v0] Error deleting comment:", error)
+    throw error
+  }
+}
+
+export async function createNotification(notification: Omit<Notification, "id">): Promise<string> {
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase not configured")
+  }
+
+  if (!db) {
+    throw new Error("Firestore database not initialized")
+  }
+
+  try {
+    const notificationsRef = collection(db, "notifications")
+    const newNotificationRef = doc(notificationsRef)
+
+    await setDoc(newNotificationRef, notification)
+    console.log("[v0] Notification created successfully:", newNotificationRef.id)
+    return newNotificationRef.id
+  } catch (error: any) {
+    console.error("[v0] Error creating notification:", error)
+    throw error
+  }
+}
+
+export async function getUserNotifications(userId: string, maxResults = 50): Promise<Notification[]> {
+  if (!isFirebaseConfigured()) {
+    return []
+  }
+
+  if (!db) {
+    return []
+  }
+
+  try {
+    const notificationsRef = collection(db, "notifications")
+    const q = query(notificationsRef, where("toUserId", "==", userId), orderBy("createdAt", "desc"), limit(maxResults))
+
+    const querySnapshot = await getDocs(q)
+    const notifications: Notification[] = []
+
+    querySnapshot.forEach((doc) => {
+      notifications.push({ id: doc.id, ...doc.data() } as Notification)
+    })
+
+    return notifications
+  } catch (error: any) {
+    console.error("[v0] Error getting notifications:", error)
+    return []
+  }
+}
+
+export async function getUnreadNotificationCount(userId: string): Promise<number> {
+  if (!isFirebaseConfigured()) {
+    return 0
+  }
+
+  if (!db) {
+    return 0
+  }
+
+  try {
+    const notificationsRef = collection(db, "notifications")
+    const q = query(notificationsRef, where("toUserId", "==", userId), where("read", "==", false))
+
+    const querySnapshot = await getDocs(q)
+    return querySnapshot.size
+  } catch (error: any) {
+    console.error("[v0] Error getting unread notification count:", error)
+    return 0
+  }
+}
+
+export async function markNotificationAsRead(notificationId: string): Promise<void> {
+  if (!isFirebaseConfigured()) {
+    return
+  }
+
+  if (!db) {
+    return
+  }
+
+  try {
+    const notificationRef = doc(db, "notifications", notificationId)
+    await updateDoc(notificationRef, {
+      read: true,
+    })
+  } catch (error: any) {
+    console.error("[v0] Error marking notification as read:", error)
+  }
+}
+
+export async function markAllNotificationsAsRead(userId: string): Promise<void> {
+  if (!isFirebaseConfigured()) {
+    return
+  }
+
+  if (!db) {
+    return
+  }
+
+  try {
+    const notificationsRef = collection(db, "notifications")
+    const q = query(notificationsRef, where("toUserId", "==", userId), where("read", "==", false))
+
+    const querySnapshot = await getDocs(q)
+    const updatePromises = querySnapshot.docs.map((doc) =>
+      updateDoc(doc.ref, {
+        read: true,
+      }),
+    )
+
+    await Promise.all(updatePromises)
+    console.log("[v0] All notifications marked as read")
+  } catch (error: any) {
+    console.error("[v0] Error marking all notifications as read:", error)
+  }
+}
+
+export async function deleteNotification(notificationId: string): Promise<void> {
+  if (!isFirebaseConfigured()) {
+    return
+  }
+
+  if (!db) {
+    return
+  }
+
+  try {
+    const notificationRef = doc(db, "notifications", notificationId)
+    await deleteDoc(notificationRef)
+    console.log("[v0] Notification deleted successfully:", notificationId)
+  } catch (error: any) {
+    console.error("[v0] Error deleting notification:", error)
   }
 }
