@@ -74,12 +74,12 @@ export interface ConnectionRequest {
 
 export interface Notification {
   id: string
-  type: "comment_reply" | "connection_request"
+  type: "comment_reply" | "connection_request" | "post_like" // Added post_like type
   fromUserId: string
   fromUserName: string
   fromUserPicture: string
   toUserId: string
-  postId?: string // For comment replies
+  postId?: string // For comment replies and post likes
   commentId?: string // For comment replies
   commentContent?: string // Preview of the reply
   read: boolean
@@ -1340,7 +1340,12 @@ export async function getPosts(
   }
 }
 
-export async function toggleLikePost(postId: string, userId: string): Promise<void> {
+export async function toggleLikePost(
+  postId: string,
+  userId: string,
+  userName: string,
+  userPicture: string,
+): Promise<void> {
   if (!isFirebaseConfigured()) {
     throw new Error("Firebase not configured")
   }
@@ -1375,6 +1380,24 @@ export async function toggleLikePost(postId: string, userId: string): Promise<vo
         likeCount: (post.likeCount || 0) + 1,
         updatedAt: serverTimestamp(),
       })
+
+      if (post.userId !== userId) {
+        try {
+          await createNotification({
+            type: "post_like",
+            fromUserId: userId,
+            fromUserName: userName,
+            fromUserPicture: userPicture,
+            toUserId: post.userId,
+            postId,
+            read: false,
+            createdAt: Date.now(),
+          })
+        } catch (notificationError) {
+          console.error("[v0] Error creating like notification:", notificationError)
+          // Don't fail the like if notification fails
+        }
+      }
     }
   } catch (error: any) {
     console.error("[v0] Error toggling like:", error)

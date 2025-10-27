@@ -83,14 +83,14 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
   }, [post.id])
 
   const handleLike = async () => {
-    if (!currentUserId) return
+    if (!currentUserId || !profile) return
 
     try {
       const newIsLiked = !isLiked
       setIsLiked(newIsLiked)
       setLikeCount((prev) => (newIsLiked ? prev + 1 : Math.max(0, prev - 1)))
 
-      await toggleLikePost(post.id, currentUserId)
+      await toggleLikePost(post.id, currentUserId, profile.profileName, profile.profilePicture)
     } catch (error) {
       console.error("[v0] Error toggling like:", error)
       setIsLiked(!isLiked)

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Bell, Check, X, User, MessageCircle } from "lucide-react"
+import { Bell, Check, X, User, MessageCircle, Heart } from "lucide-react"
 import {
   respondToConnectionRequest,
   getUserProfile,
@@ -232,10 +232,16 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                        {notification.type === "post_like" ? (
+                          <Heart className="h-4 w-4 text-red-500" />
+                        ) : (
+                          <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                        )}
                         <p className="text-sm font-medium truncate">{notification.fromUserName}</p>
                       </div>
-                      <p className="text-xs text-muted-foreground">replied to your comment</p>
+                      <p className="text-xs text-muted-foreground">
+                        {notification.type === "post_like" ? "liked your post" : "replied to your comment"}
+                      </p>
                       {notification.commentContent && (
                         <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                           "{notification.commentContent}"
