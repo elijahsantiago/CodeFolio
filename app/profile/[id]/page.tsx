@@ -35,6 +35,7 @@ export default function ProfileViewPage() {
   const [connectLoading, setConnectLoading] = useState(false)
   const [isOwnProfile, setIsOwnProfile] = useState(false) // Declare isOwnProfile here
   const isAdmin = user?.email === "e.santiago.e1@gmail.com" || user?.email === "gabeasosa@gmail.com"
+  const fromFeed = searchParams.get("from") === "feed" // Extract fromFeed from query parameters
 
   useEffect(() => {
     setFirebaseAvailable(isFirebaseConfigured())
