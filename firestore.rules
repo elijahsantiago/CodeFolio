@@ -50,6 +50,8 @@ service cloud.firestore {
         // Authenticated users can update likes and likeCount
         (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likeCount', 'updatedAt']))
         ||
+        (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount', 'updatedAt']))
+        ||
         // Owners and admins can update everything
         (isOwner(resource.data.userId) || isAdmin())
       );
@@ -76,9 +78,9 @@ service cloud.firestore {
         // Anyone can read comments
         allow read: if true;
         
-        // Authenticated users can add comments
         allow create: if isAuthenticated() 
-          && request.resource.data.userId == request.auth.uid;
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.postId == postId;
         
         // Users can update their own comments
         allow update: if isAuthenticated() 
