@@ -224,7 +224,7 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
   const getReplies = (commentId: string) => comments.filter((c) => c.parentCommentId === commentId)
 
   const navigateToProfile = (userId: string) => {
-    router.push(`/profile/${userId}`)
+    router.push(`/profile/${userId}?from=feed`)
   }
 
   return (

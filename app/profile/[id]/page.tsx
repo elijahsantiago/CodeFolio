@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Loader2, AlertCircle, UserPlus, UserCheck } from "lucide-react"
 import { ProfileShowcase } from "@/components/profile-showcase"
@@ -23,6 +23,7 @@ import { useProfile } from "@/hooks/use-profile"
 export default function ProfileViewPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useAuth()
   const { profile: currentUserProfile, updateProfile } = useProfile()
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -181,6 +182,8 @@ export default function ProfileViewPage() {
     }
   }
 
+  const fromFeed = searchParams.get("from") === "feed"
+
   if (!firebaseAvailable) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -240,9 +243,14 @@ export default function ProfileViewPage() {
     <div className="min-h-screen" style={pageBackgroundStyle}>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <Button onClick={() => router.push("/?discover=true")} variant="outline" size="sm" className="gap-2">
+          <Button
+            onClick={() => router.push(fromFeed ? "/?view=feed" : "/?discover=true")}
+            variant="outline"
+            size="sm"
+            className="gap-2"
+          >
             <ArrowLeft className="h-4 w-4" />
-            Back to Discover
+            {fromFeed ? "Back to Live Feed" : "Back to Discover"}
           </Button>
 
           <div className="flex items-center gap-2">
