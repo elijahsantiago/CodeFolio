@@ -276,24 +276,23 @@ export function ProfileShowcase({
                   {isAdmin && (
                     <div className="relative">
                       <style jsx>{`
-                        @keyframes rainbow-cycle {
-                          0% { background-position: 0% 50%; }
-                          50% { background-position: 100% 50%; }
-                          100% { background-position: 0% 50%; }
+                        @keyframes rainbow-border {
+                          0% { border-color: #ff0000; }
+                          14% { border-color: #ff7f00; }
+                          28% { border-color: #ffff00; }
+                          42% { border-color: #00ff00; }
+                          57% { border-color: #0000ff; }
+                          71% { border-color: #4b0082; }
+                          85% { border-color: #9400d3; }
+                          100% { border-color: #ff0000; }
                         }
-                        .rainbow-glow {
-                          background: linear-gradient(90deg, 
-                            #ff0000, #ff7f00, #ffff00, #00ff00, 
-                            #0000ff, #4b0082, #9400d3, #ff0000
-                          );
-                          background-size: 200% 200%;
-                          animation: rainbow-cycle 3s linear infinite;
+                        .rainbow-outline {
+                          animation: rainbow-border 3s linear infinite;
                         }
                       `}</style>
-                      <div className="absolute inset-0 rainbow-glow rounded-lg blur-md opacity-75" />
-                      <div className="relative flex items-center gap-1.5 px-3 py-1.5 rainbow-glow rounded-lg shadow-lg">
-                        <Shield className="h-4 w-4 text-white drop-shadow-md" />
-                        <span className="text-xs font-bold text-white drop-shadow-md tracking-wide">ADMIN</span>
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background/90 backdrop-blur-sm rounded-lg border-2 rainbow-outline shadow-lg">
+                        <Shield className="h-4 w-4 text-foreground" />
+                        <span className="text-xs font-bold text-foreground tracking-wide">ADMIN</span>
                       </div>
                     </div>
                   )}
