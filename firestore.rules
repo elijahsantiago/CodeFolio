@@ -43,8 +43,13 @@ service cloud.firestore {
       allow create: if isAuthenticated() 
         && request.resource.data.userId == request.auth.uid;
       
-      // Users can update their own posts, admins can update any post
-      allow update: if isOwner(request.resource.data.userId) || isAdmin();
+      allow update: if (
+        // Anyone can increment view count
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount', 'updatedAt']))
+        ||
+        // Owners and admins can update everything
+        (isOwner(resource.data.userId) || isAdmin())
+      );
       
       // Users can delete their own posts, admins can delete any post
       allow delete: if isOwner(resource.data.userId) || isAdmin();

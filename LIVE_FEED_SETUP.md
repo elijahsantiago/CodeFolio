@@ -75,7 +75,8 @@ The live feed requires updated Firestore security rules to allow users to create
 **Posts Collection:**
 - ✅ Anyone can read posts (public feed)
 - ✅ Authenticated users can create posts (must match their user ID)
-- ✅ Users can update their own posts
+- ✅ Anyone can increment view counts (for tracking post views)
+- ✅ Users can update their own posts (other fields)
 - ✅ Users can delete their own posts
 - ✅ Admins can update or delete any post
 
@@ -160,9 +161,10 @@ If you see this error, it means the Firestore security rules haven't been applie
 ### View Count Not Updating
 
 1. **Check Console**: Look for any error messages
-2. **Verify Rules**: Make sure posts can be updated
-3. **Check Network**: Verify Firestore connection is working
-4. **Refresh**: Try refreshing the page
+2. **Verify Rules**: Make sure the updated rules allow view count updates by anyone
+3. **Publish Rules**: Ensure you've published the latest `firestore.rules` from the project
+4. **Check Network**: Verify Firestore connection is working
+5. **Refresh**: Try refreshing the page after publishing rules
 
 ## Security Considerations
 
