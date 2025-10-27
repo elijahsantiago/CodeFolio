@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Heart, MessageCircle, Eye, Trash2, Send } from "lucide-react"
+import { Heart, MessageCircle, Eye, Trash2, Send, Reply } from "lucide-react"
 import {
   toggleLikePost,
   addComment,
@@ -26,9 +26,11 @@ interface PostCardProps {
 export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) {
   const [isLiked, setIsLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(post.likeCount || 0)
+  const [commentCount, setCommentCount] = useState(post.commentCount || 0)
   const [showComments, setShowComments] = useState(false)
   const [comments, setComments] = useState<Comment[]>([])
   const [commentText, setCommentText] = useState("")
+  const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [loadingComments, setLoadingComments] = useState(false)
   const [submittingComment, setSubmittingComment] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -39,6 +41,10 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
       setIsLiked(post.likes?.includes(currentUserId) || false)
     }
   }, [currentUserId, post.likes])
+
+  useEffect(() => {
+    setCommentCount(post.commentCount || 0)
+  }, [post.commentCount])
 
   useEffect(() => {
     // Increment view count when post is rendered
@@ -96,6 +102,7 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
         profile.profileName,
         profile.profilePicture,
         commentText,
+        replyingTo || undefined,
       )
 
       const newComment: Comment = {
@@ -105,11 +112,14 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
         userName: profile.profileName,
         userPicture: profile.profilePicture,
         content: commentText,
+        parentCommentId: replyingTo || undefined,
         createdAt: { toMillis: () => Date.now() } as any,
       }
 
       setComments((prev) => [...prev, newComment])
+      setCommentCount((prev) => prev + 1)
       setCommentText("")
+      setReplyingTo(null)
     } catch (error) {
       console.error("[v0] Error submitting comment:", error)
     } finally {
@@ -134,6 +144,20 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
     }
   }
 
+  const handleReply = (commentId: string, userName: string) => {
+    setReplyingTo(commentId)
+    setCommentText(`@${userName} `)
+  }
+
+  const handleCancelReply = () => {
+    setReplyingTo(null)
+    setCommentText("")
+  }
+
+  const getParentComment = (parentId: string) => {
+    return comments.find((c) => c.id === parentId)
+  }
+
   const formatTimestamp = (timestamp: any) => {
     if (!timestamp) return "Just now"
 
@@ -144,6 +168,9 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
       return "Just now"
     }
   }
+
+  const topLevelComments = comments.filter((c) => !c.parentCommentId)
+  const getReplies = (commentId: string) => comments.filter((c) => c.parentCommentId === commentId)
 
   return (
     <Card className="p-6 space-y-4">
@@ -197,7 +224,7 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
 
         <Button variant="ghost" size="sm" onClick={handleToggleComments} className="gap-2">
           <MessageCircle className="h-4 w-4" />
-          <span>{post.commentCount || 0}</span>
+          <span>{commentCount}</span>
         </Button>
 
         <div className="flex items-center gap-2 text-muted-foreground text-sm ml-auto">
@@ -218,48 +245,114 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
                 </p>
               ) : (
                 <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {comments.map((comment) => (
-                    <div key={comment.id} className="flex gap-3">
-                      <img
-                        src={comment.userPicture || "/placeholder.svg?height=32&width=32&query=profile avatar"}
-                        alt={comment.userName}
-                        className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                      />
-                      <div className="flex-1 bg-muted rounded-lg p-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-semibold text-sm">{comment.userName}</p>
-                          <p className="text-xs text-muted-foreground">{formatTimestamp(comment.createdAt)}</p>
+                  {topLevelComments.map((comment) => {
+                    const replies = getReplies(comment.id)
+                    return (
+                      <div key={comment.id} className="space-y-2">
+                        <div className="flex gap-3">
+                          <img
+                            src={comment.userPicture || "/placeholder.svg?height=32&width=32&query=profile avatar"}
+                            alt={comment.userName}
+                            className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                          />
+                          <div className="flex-1">
+                            <div className="bg-muted rounded-lg p-3">
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="font-semibold text-sm">{comment.userName}</p>
+                                <p className="text-xs text-muted-foreground">{formatTimestamp(comment.createdAt)}</p>
+                              </div>
+                              <p className="text-sm leading-relaxed">{comment.content}</p>
+                            </div>
+                            {currentUserId && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleReply(comment.id, comment.userName)}
+                                className="mt-1 h-7 text-xs gap-1"
+                              >
+                                <Reply className="h-3 w-3" />
+                                Reply
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-sm leading-relaxed">{comment.content}</p>
+
+                        {replies.length > 0 && (
+                          <div className="ml-11 space-y-2">
+                            {replies.map((reply) => (
+                              <div key={reply.id} className="flex gap-3">
+                                <img
+                                  src={reply.userPicture || "/placeholder.svg?height=28&width=28&query=profile avatar"}
+                                  alt={reply.userName}
+                                  className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                                />
+                                <div className="flex-1">
+                                  <div className="bg-muted/70 rounded-lg p-2.5">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <p className="font-semibold text-xs">{reply.userName}</p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {formatTimestamp(reply.createdAt)}
+                                      </p>
+                                    </div>
+                                    <p className="text-sm leading-relaxed">{reply.content}</p>
+                                  </div>
+                                  {currentUserId && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleReply(comment.id, reply.userName)}
+                                      className="mt-1 h-6 text-xs gap-1"
+                                    >
+                                      <Reply className="h-3 w-3" />
+                                      Reply
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
 
               {currentUserId && profile && (
-                <div className="flex gap-3 pt-2">
-                  <img
-                    src={profile.profilePicture || "/placeholder.svg?height=32&width=32&query=profile avatar"}
-                    alt="Your avatar"
-                    className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                  />
-                  <div className="flex-1 flex gap-2">
-                    <Textarea
-                      value={commentText}
-                      onChange={(e) => setCommentText(e.target.value)}
-                      placeholder="Write a comment..."
-                      className="min-h-[60px] resize-none"
-                      disabled={submittingComment}
+                <div className="space-y-2 pt-2">
+                  {replyingTo && (
+                    <div className="flex items-center justify-between bg-muted/50 rounded px-3 py-2 text-sm">
+                      <span className="text-muted-foreground">
+                        Replying to <span className="font-semibold">{getParentComment(replyingTo)?.userName}</span>
+                      </span>
+                      <Button variant="ghost" size="sm" onClick={handleCancelReply} className="h-6 text-xs">
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                  <div className="flex gap-3">
+                    <img
+                      src={profile.profilePicture || "/placeholder.svg?height=32&width=32&query=profile avatar"}
+                      alt="Your avatar"
+                      className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                     />
-                    <Button
-                      onClick={handleSubmitComment}
-                      disabled={!commentText.trim() || submittingComment}
-                      size="sm"
-                      className="self-end"
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
+                    <div className="flex-1 flex gap-2">
+                      <Textarea
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
+                        placeholder={replyingTo ? "Write a reply..." : "Write a comment..."}
+                        className="min-h-[60px] resize-none"
+                        disabled={submittingComment}
+                      />
+                      <Button
+                        onClick={handleSubmitComment}
+                        disabled={!commentText.trim() || submittingComment}
+                        size="sm"
+                        className="self-end"
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}

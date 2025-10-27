@@ -93,6 +93,7 @@ export interface Comment {
   userName: string
   userPicture: string
   content: string
+  parentCommentId?: string // Added parentCommentId field
   createdAt: Timestamp
 }
 
@@ -1372,6 +1373,7 @@ export async function addComment(
   userName: string,
   userPicture: string,
   content: string,
+  parentCommentId?: string,
 ): Promise<string> {
   if (!isFirebaseConfigured()) {
     throw new Error("Firebase not configured")
@@ -1395,6 +1397,7 @@ export async function addComment(
       userName,
       userPicture,
       content: content.trim(),
+      parentCommentId: parentCommentId || undefined,
       createdAt: serverTimestamp() as Timestamp,
     }
 
