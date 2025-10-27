@@ -93,9 +93,9 @@ service cloud.firestore {
     
     // Notifications rules
     match /notifications/{notificationId} {
-      // Users can read their own notifications
+      // Users can read their own notifications (both individual docs and queries)
       allow read: if isAuthenticated() 
-        && resource.data.toUserId == request.auth.uid;
+        && (resource == null || resource.data.toUserId == request.auth.uid);
       
       // Authenticated users can create notifications
       allow create: if isAuthenticated();
