@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ProfileShowcase } from "@/components/profile-showcase"
 import { ShowcaseEditor } from "@/components/showcase-editor"
 import { ProfileSearch } from "@/components/profile-search"
@@ -20,6 +20,7 @@ export default function HomePage() {
   const { user, loading: authLoading, logout } = useAuth()
   const { profile, loading: profileLoading, updateProfile } = useProfile()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [currentLayout, setCurrentLayout] = useState<"default" | "minimal" | "grid" | "masonry" | "spotlight">("grid")
   const [backgroundColor, setBackgroundColor] = useState("#ffffff")
@@ -128,19 +129,21 @@ export default function HomePage() {
   }, [user, authLoading, router])
 
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    if (urlParams.get("discover") === "true") {
+    const discover = searchParams.get("discover")
+    const postId = searchParams.get("post")
+
+    if (discover === "true") {
       setShowSearch(true)
+      setShowFeed(false)
       window.history.replaceState({}, "", "/")
-    }
-    const postId = urlParams.get("post")
-    if (postId) {
+    } else if (postId) {
+      console.log("[v0] Navigating to post:", postId)
       setShowFeed(true)
       setShowSearch(false)
       setHighlightPostId(postId)
       window.history.replaceState({}, "", "/")
     }
-  }, [])
+  }, [searchParams])
 
   useEffect(() => {
     if (profile) {
