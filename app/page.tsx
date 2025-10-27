@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { ProfileShowcase } from "@/components/profile-showcase"
 import { ShowcaseEditor } from "@/components/showcase-editor"
 import { ProfileSearch } from "@/components/profile-search"
+import { LiveFeed } from "@/components/live-feed"
 import { Button } from "@/components/ui/button"
 import { Edit, Eye, LogOut, Loader2 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
@@ -14,6 +15,7 @@ import { NotificationsPanel } from "@/components/notifications-panel"
 export default function HomePage() {
   const [isEditing, setIsEditing] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
+  const [showFeed, setShowFeed] = useState(false)
   const { user, loading: authLoading, logout } = useAuth()
   const { profile, loading: profileLoading, updateProfile } = useProfile()
   const router = useRouter()
@@ -240,15 +242,42 @@ export default function HomePage() {
               variant="outline"
               size="lg"
               onClick={() => {
-                setShowSearch(!showSearch)
+                setShowFeed(false)
+                setShowSearch(false)
+              }}
+              className="font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
+              style={!showSearch && !showFeed ? activeButtonStyle : buttonStyle}
+            >
+              My Profile
+            </Button>
+
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => {
+                setShowFeed(true)
+                setShowSearch(false)
+              }}
+              className="font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
+              style={showFeed ? activeButtonStyle : buttonStyle}
+            >
+              Live Feed
+            </Button>
+
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => {
+                setShowSearch(true)
+                setShowFeed(false)
               }}
               className="font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
               style={showSearch ? activeButtonStyle : buttonStyle}
             >
-              {showSearch ? "My Profile" : "Discover Profiles"}
+              Discover Profiles
             </Button>
 
-            {!showSearch && (
+            {!showSearch && !showFeed && (
               <Button
                 onClick={() => setIsEditing(!isEditing)}
                 variant="outline"
@@ -287,7 +316,9 @@ export default function HomePage() {
           </div>
         </div>
 
-        {showSearch ? (
+        {showFeed ? (
+          <LiveFeed />
+        ) : showSearch ? (
           <ProfileSearch />
         ) : (
           <>

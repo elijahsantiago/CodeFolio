@@ -71,6 +71,35 @@ export interface ConnectionRequest {
   respondedAt?: number
 }
 
+export interface Post {
+  id: string
+  userId: string
+  userName: string
+  userPicture: string
+  content: string
+  imageUrl?: string
+  likes: string[] // Array of user IDs who liked
+  likeCount: number
+  commentCount: number
+  viewCount: number
+  createdAt: Timestamp
+  updatedAt: Timestamp
+}
+
+export interface Comment {
+  id: string
+  postId: string
+  userId: string
+  userName: string
+  userPicture: string
+  content: string
+  createdAt: Timestamp
+}
+
+export interface PostWithComments extends Post {
+  comments: Comment[]
+}
+
 export interface ProfileCard {
   id: string
   userId: string
@@ -1199,6 +1228,285 @@ export async function removeConnection(currentUserId: string, targetUserId: stri
     if (error?.code === "permission-denied") {
       console.error("[v0] Firestore permission denied - check security rules")
     }
+    throw error
+  }
+}
+
+export async function createPost(
+  userId: string,
+  userName: string,
+  userPicture: string,
+  content: string,
+  imageUrl?: string,
+): Promise<string> {
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase not configured")
+  }
+
+  if (!db) {
+    throw new Error("Firestore database not initialized")
+  }
+
+  if (!content.trim()) {
+    throw new Error("Post content cannot be empty")
+  }
+
+  try {
+    console.log("[v0] Creating new post for user:", userId)
+    const postsRef = collection(db, "posts")
+    const newPostRef = doc(postsRef)
+
+    const newPost: Omit<Post, "id"> = {
+      userId,
+      userName,
+      userPicture,
+      content: content.trim(),
+      imageUrl: imageUrl || undefined,
+      likes: [],
+      likeCount: 0,
+      commentCount: 0,
+      viewCount: 0,
+      createdAt: serverTimestamp() as Timestamp,
+      updatedAt: serverTimestamp() as Timestamp,
+    }
+
+    await setDoc(newPostRef, newPost)
+    console.log("[v0] Post created successfully:", newPostRef.id)
+    return newPostRef.id
+  } catch (error: any) {
+    console.error("[v0] Error creating post:", error)
+    throw error
+  }
+}
+
+export async function getPosts(
+  maxResults = 20,
+  startAfter?: any,
+): Promise<{
+  posts: Post[]
+  lastDoc: any
+  hasMore: boolean
+}> {
+  if (!isFirebaseConfigured()) {
+    return { posts: [], lastDoc: null, hasMore: false }
+  }
+
+  if (!db) {
+    return { posts: [], lastDoc: null, hasMore: false }
+  }
+
+  try {
+    const postsRef = collection(db, "posts")
+
+    let q
+    if (startAfter) {
+      q = query(postsRef, orderBy("createdAt", "desc"), limit(maxResults + 1), startAfter)
+    } else {
+      q = query(postsRef, orderBy("createdAt", "desc"), limit(maxResults + 1))
+    }
+
+    const querySnapshot = await getDocs(q)
+    const posts: Post[] = []
+
+    const hasMore = querySnapshot.docs.length > maxResults
+    const docsToProcess = hasMore ? querySnapshot.docs.slice(0, maxResults) : querySnapshot.docs
+
+    docsToProcess.forEach((doc) => {
+      posts.push({ id: doc.id, ...doc.data() } as Post)
+    })
+
+    const lastDoc = hasMore ? querySnapshot.docs[maxResults - 1] : null
+
+    return { posts, lastDoc, hasMore }
+  } catch (error: any) {
+    console.error("[v0] Error getting posts:", error)
+    return { posts: [], lastDoc: null, hasMore: false }
+  }
+}
+
+export async function toggleLikePost(postId: string, userId: string): Promise<void> {
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase not configured")
+  }
+
+  if (!db) {
+    throw new Error("Firestore database not initialized")
+  }
+
+  try {
+    const postRef = doc(db, "posts", postId)
+    const postSnap = await getDoc(postRef)
+
+    if (!postSnap.exists()) {
+      throw new Error("Post not found")
+    }
+
+    const post = postSnap.data() as Post
+    const likes = post.likes || []
+    const isLiked = likes.includes(userId)
+
+    if (isLiked) {
+      // Unlike
+      await updateDoc(postRef, {
+        likes: likes.filter((id) => id !== userId),
+        likeCount: Math.max(0, (post.likeCount || 0) - 1),
+        updatedAt: serverTimestamp(),
+      })
+    } else {
+      // Like
+      await updateDoc(postRef, {
+        likes: [...likes, userId],
+        likeCount: (post.likeCount || 0) + 1,
+        updatedAt: serverTimestamp(),
+      })
+    }
+  } catch (error: any) {
+    console.error("[v0] Error toggling like:", error)
+    throw error
+  }
+}
+
+export async function addComment(
+  postId: string,
+  userId: string,
+  userName: string,
+  userPicture: string,
+  content: string,
+): Promise<string> {
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase not configured")
+  }
+
+  if (!db) {
+    throw new Error("Firestore database not initialized")
+  }
+
+  if (!content.trim()) {
+    throw new Error("Comment content cannot be empty")
+  }
+
+  try {
+    const commentsRef = collection(db, "posts", postId, "comments")
+    const newCommentRef = doc(commentsRef)
+
+    const newComment: Omit<Comment, "id"> = {
+      postId,
+      userId,
+      userName,
+      userPicture,
+      content: content.trim(),
+      createdAt: serverTimestamp() as Timestamp,
+    }
+
+    await setDoc(newCommentRef, newComment)
+
+    // Update comment count on post
+    const postRef = doc(db, "posts", postId)
+    const postSnap = await getDoc(postRef)
+
+    if (postSnap.exists()) {
+      const post = postSnap.data() as Post
+      await updateDoc(postRef, {
+        commentCount: (post.commentCount || 0) + 1,
+        updatedAt: serverTimestamp(),
+      })
+    }
+
+    return newCommentRef.id
+  } catch (error: any) {
+    console.error("[v0] Error adding comment:", error)
+    throw error
+  }
+}
+
+export async function getComments(postId: string, maxResults = 50): Promise<Comment[]> {
+  if (!isFirebaseConfigured()) {
+    return []
+  }
+
+  if (!db) {
+    return []
+  }
+
+  try {
+    const commentsRef = collection(db, "posts", postId, "comments")
+    const q = query(commentsRef, orderBy("createdAt", "asc"), limit(maxResults))
+
+    const querySnapshot = await getDocs(q)
+    const comments: Comment[] = []
+
+    querySnapshot.forEach((doc) => {
+      comments.push({ id: doc.id, ...doc.data() } as Comment)
+    })
+
+    return comments
+  } catch (error: any) {
+    console.error("[v0] Error getting comments:", error)
+    return []
+  }
+}
+
+export async function incrementPostView(postId: string): Promise<void> {
+  if (!isFirebaseConfigured()) {
+    return
+  }
+
+  if (!db) {
+    return
+  }
+
+  try {
+    const postRef = doc(db, "posts", postId)
+    const postSnap = await getDoc(postRef)
+
+    if (postSnap.exists()) {
+      const post = postSnap.data() as Post
+      await updateDoc(postRef, {
+        viewCount: (post.viewCount || 0) + 1,
+        updatedAt: serverTimestamp(),
+      })
+    }
+  } catch (error: any) {
+    console.error("[v0] Error incrementing view count:", error)
+  }
+}
+
+export async function deletePost(postId: string, userId: string): Promise<void> {
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase not configured")
+  }
+
+  if (!db) {
+    throw new Error("Firestore database not initialized")
+  }
+
+  try {
+    const postRef = doc(db, "posts", postId)
+    const postSnap = await getDoc(postRef)
+
+    if (!postSnap.exists()) {
+      throw new Error("Post not found")
+    }
+
+    const post = postSnap.data() as Post
+
+    // Check if user owns the post
+    if (post.userId !== userId) {
+      throw new Error("Unauthorized: You can only delete your own posts")
+    }
+
+    // Delete all comments first
+    const commentsRef = collection(db, "posts", postId, "comments")
+    const commentsSnapshot = await getDocs(commentsRef)
+
+    const deletePromises = commentsSnapshot.docs.map((doc) => doc.ref.delete())
+    await Promise.all(deletePromises)
+
+    // Delete the post
+    await postRef.delete()
+    console.log("[v0] Post deleted successfully:", postId)
+  } catch (error: any) {
+    console.error("[v0] Error deleting post:", error)
     throw error
   }
 }
