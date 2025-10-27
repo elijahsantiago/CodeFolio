@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { PostCard } from "@/components/post-card"
+import { PostModal } from "@/components/post-modal"
 import { CreatePostForm } from "@/components/create-post-form"
 import { Button } from "@/components/ui/button"
 import { Loader2, RefreshCw } from "lucide-react"
@@ -22,6 +23,8 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
   const [loadingMore, setLoadingMore] = useState(false)
   const { user } = useAuth()
   const postRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   const loadPosts = async (loadMore = false) => {
     try {
@@ -82,6 +85,19 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
 
   const handlePostDeleted = (postId: string) => {
     setPosts((prev) => prev.filter((post) => post.id !== postId))
+    if (selectedPost?.id === postId) {
+      handleCloseModal()
+    }
+  }
+
+  const handlePostClick = (post: Post) => {
+    setSelectedPost(post)
+    setIsModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setTimeout(() => setSelectedPost(null), 200) // Delay clearing to allow animation
   }
 
   if (loading) {
@@ -128,7 +144,12 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
                 }}
                 className={highlightPostId === post.id ? "ring-2 ring-primary rounded-xl transition-all" : ""}
               >
-                <PostCard post={post} currentUserId={user?.uid} onPostDeleted={handlePostDeleted} />
+                <PostCard
+                  post={post}
+                  currentUserId={user?.uid}
+                  onPostDeleted={handlePostDeleted}
+                  onPostClick={() => handlePostClick(post)}
+                />
               </div>
             ))}
 
@@ -149,6 +170,14 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
           </>
         )}
       </div>
+
+      <PostModal
+        post={selectedPost}
+        currentUserId={user?.uid}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onPostDeleted={handlePostDeleted}
+      />
     </div>
   )
 }

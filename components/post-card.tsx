@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -28,9 +30,11 @@ interface PostCardProps {
   post: Post
   currentUserId?: string
   onPostDeleted?: (postId: string) => void
+  isClickable?: boolean
+  onPostClick?: () => void
 }
 
-export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) {
+export function PostCard({ post, currentUserId, onPostDeleted, isClickable = true, onPostClick }: PostCardProps) {
   const [isLiked, setIsLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(post.likeCount || 0)
   const [commentCount, setCommentCount] = useState(post.commentCount || 0)
@@ -227,8 +231,27 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
     router.push(`/profile/${userId}?from=feed`)
   }
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't trigger if clicking on interactive elements
+    const target = e.target as HTMLElement
+    if (
+      target.closest("button") ||
+      target.closest("textarea") ||
+      target.closest("input") ||
+      target.closest("a") ||
+      !isClickable ||
+      !onPostClick
+    ) {
+      return
+    }
+    onPostClick()
+  }
+
   return (
-    <Card className="p-6 space-y-4">
+    <Card
+      className={`p-6 space-y-4 ${isClickable ? "cursor-pointer hover:shadow-lg transition-shadow" : ""}`}
+      onClick={handleCardClick}
+    >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <img
