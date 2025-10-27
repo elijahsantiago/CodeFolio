@@ -13,6 +13,9 @@ import {
   getUserProfile,
   getPendingConnectionRequests,
   getConnectionRequestCount,
+  getUserNotifications,
+  getUnreadNotificationCount,
+  deleteNotification,
   type ConnectionRequest,
   type Notification,
 } from "@/lib/firestore"
@@ -30,19 +33,21 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
   const { profile, updateProfile } = useProfile()
   const router = useRouter()
   const [requests, setRequests] = useState<ConnectionRequest[]>([])
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [totalCount, setTotalCount] = useState(0)
   const [requestCount, setRequestCount] = useState(0)
   const [loading, setLoading] = useState<string | null>(null)
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
     if (user) {
-      loadRequestCount()
+      loadCounts()
     }
   }, [user])
 
   useEffect(() => {
     if (isOpen && user) {
-      loadRequests()
+      loadAllNotifications()
     }
   }, [isOpen, user])
 
@@ -51,27 +56,16 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
 
     const interval = setInterval(() => {
       if (isOpen) {
-        loadRequests() // Load full data if panel is open
+        loadAllNotifications() // Load full data if panel is open
       } else {
-        loadRequestCount() // Only load count if panel is closed
+        loadCounts() // Only load count if panel is closed
       }
     }, 30000) // Refresh every 30 seconds instead of 10
 
     return () => clearInterval(interval)
   }, [user, isOpen])
 
-  const loadRequestCount = async () => {
-    if (!user) return
-
-    try {
-      const count = await getConnectionRequestCount(user.uid)
-      setRequestCount(count)
-    } catch (error) {
-      console.error("[v0] Error loading connection request count:", error)
-    }
-  }
-
-  const loadRequests = async () => {
+  const loadCounts = async () => {
     if (!user) return
 
     try {
@@ -94,9 +88,39 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
         getUserNotifications(user.uid),
       ])
       setRequests(pendingRequests)
+      setNotifications(userNotifications)
       setRequestCount(pendingRequests.length)
+      setTotalCount(pendingRequests.length + userNotifications.filter((n) => !n.read).length)
     } catch (error) {
-      console.error("[v0] Error loading connection requests:", error)
+      console.error("[v0] Error loading notifications:", error)
+    }
+  }
+
+  const handleNotificationClick = async (notification: Notification) => {
+    try {
+      await deleteNotification(notification.id)
+
+      // Navigate to the post
+      if (notification.postId) {
+        setIsOpen(false)
+        router.push(`/post/${notification.postId}`)
+      }
+
+      // Reload notifications
+      await loadAllNotifications()
+    } catch (error) {
+      console.error("[v0] Error handling notification click:", error)
+    }
+  }
+
+  const handleDeleteNotification = async (notificationId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+
+    try {
+      await deleteNotification(notificationId)
+      await loadAllNotifications()
+    } catch (error) {
+      console.error("[v0] Error deleting notification:", error)
     }
   }
 
@@ -128,8 +152,6 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
       setLoading(null)
     }
   }
-
-  const pendingCount = requestCount
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
