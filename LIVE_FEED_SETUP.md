@@ -32,6 +32,26 @@ The live feed uses a `posts` collection with the following structure:
 }
 \`\`\`
 
+### Notifications Collection
+
+The notification system uses a `notifications` collection with the following structure:
+
+\`\`\`typescript
+{
+  id: string              // Auto-generated notification ID
+  type: string            // Type of notification (e.g., "comment_reply")
+  toUserId: string        // ID of user receiving the notification
+  fromUserId: string      // ID of user who triggered the notification
+  fromUserName: string    // Display name of the triggering user
+  fromUserAvatar?: string // Avatar of the triggering user
+  postId?: string         // Related post ID (for comment replies)
+  commentId?: string      // Related comment ID (for replies)
+  message: string         // Notification message text
+  read: boolean           // Whether notification has been read
+  createdAt: Timestamp    // When the notification was created
+}
+\`\`\`
+
 ### Subcollections
 
 Each post has two subcollections:
@@ -92,6 +112,11 @@ The live feed requires updated Firestore security rules to allow users to create
 - ✅ Users can delete their own comments
 - ✅ Admins can delete any comment
 
+**Notifications Collection:**
+- ✅ Authenticated users can read their own notifications
+- ✅ Authenticated users can mark notifications as read
+- ✅ Admins can read and modify all notifications
+
 ## Testing the Live Feed
 
 ### Test Scenario 1: Create a Post
@@ -131,6 +156,18 @@ The live feed requires updated Firestore security rules to allow users to create
 3. **User A**: Confirm deletion
 4. **Verify**: Post should be removed from the feed
 
+### Test Scenario 6: Receive a Notification
+
+1. **User A**: Post a comment on User B's post
+2. **User B**: Navigate to the "Notifications" section
+3. **Verify**: Notification appears for User B
+4. **Verify**: Notification includes User A's comment and post details
+
+### Test Scenario 7: Mark Notification as Read
+
+1. **User B**: Click on a notification in the "Notifications" section
+2. **Verify**: Notification status changes to "Read"
+
 ## Troubleshooting
 
 ### "Missing or insufficient permissions" Error
@@ -164,6 +201,22 @@ If you see this error, it means the Firestore security rules haven't been applie
 2. **Verify Rules**: Make sure the updated rules allow view count updates by anyone
 3. **Publish Rules**: Ensure you've published the latest `firestore.rules` from the project
 4. **Check Network**: Verify Firestore connection is working
+5. **Refresh**: Try refreshing the page after publishing rules
+
+### Notifications Not Appearing
+
+1. **Check Console**: Look for any error messages
+2. **Verify Authentication**: Make sure you're logged in
+3. **Check Firestore**: Go to Firebase Console → Firestore Database → Data
+4. **Verify Collection**: Make sure the `notifications` collection exists
+5. **Check Rules**: Verify security rules allow reading notifications
+
+### Notifications Not Marking as Read
+
+1. **Check Authentication**: Make sure you're logged in
+2. **Check Console**: Look for any error messages
+3. **Verify Rules**: Make sure security rules allow marking notifications as read
+4. **Publish Rules**: Ensure you've published the latest `firestore.rules` from the project
 5. **Refresh**: Try refreshing the page after publishing rules
 
 ## Security Considerations
@@ -203,6 +256,58 @@ The security model allows:
    - Caching strategies
    - Lazy loading of comments
    - Image optimization
+
+## Required Firestore Indexes
+
+The live feed and notification system requires composite indexes for efficient querying.
+
+### Creating Required Indexes
+
+**Method 1: Automatic (Recommended)**
+
+When you first use the notifications feature, Firestore will show an error with a direct link to create the required index:
+
+1. Look for the error message in your browser console
+2. Click the provided link (it will look like: `https://console.firebase.google.com/v1/r/project/YOUR_PROJECT/firestore/indexes?create_composite=...`)
+3. The Firebase Console will open with the index pre-configured
+4. Click **Create Index**
+5. Wait for the index to build (usually takes a few minutes)
+
+**Method 2: Manual**
+
+If you prefer to create the index manually:
+
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Select your project
+3. Navigate to **Firestore Database** → **Indexes** tab
+4. Click **Create Index**
+5. Configure the index:
+   - **Collection ID**: `notifications`
+   - **Fields to index**:
+     - Field: `toUserId`, Order: `Ascending`
+     - Field: `createdAt`, Order: `Descending`
+   - **Query scope**: `Collection`
+6. Click **Create**
+7. Wait for the index to build (status will change from "Building" to "Enabled")
+
+### Index Status
+
+You can check the status of your indexes:
+
+1. Go to **Firestore Database** → **Indexes** tab
+2. Look for the `notifications` collection index
+3. Status should show as **Enabled** (green)
+4. If status shows **Building**, wait a few minutes and refresh
+
+### Troubleshooting Index Errors
+
+If you see an error like "The query requires an index":
+
+1. **Check the Error Message**: It will contain a direct link to create the index
+2. **Click the Link**: This is the fastest way to create the correct index
+3. **Wait for Build**: Indexes can take 5-15 minutes to build for large collections
+4. **Refresh Your App**: After the index is enabled, refresh your application
+5. **Clear Cache**: If issues persist, clear your browser cache
 
 ## API Functions
 
@@ -246,6 +351,21 @@ await trackPostView(postId)
 ### Delete Post
 \`\`\`typescript
 await deletePost(postId)
+\`\`\`
+
+### Add Notification
+\`\`\`typescript
+await addNotification(toUserId, fromUserId, fromUserName, type, message, postId?, commentId?, fromUserAvatar?)
+\`\`\`
+
+### Get Notifications
+\`\`\`typescript
+const notifications = await getNotifications(toUserId)
+\`\`\`
+
+### Mark Notification as Read
+\`\`\`typescript
+await markNotificationAsRead(notificationId)
 \`\`\`
 
 ## Performance Optimization
