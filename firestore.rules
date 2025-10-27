@@ -47,6 +47,9 @@ service cloud.firestore {
         // Anyone can increment view count
         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount', 'updatedAt']))
         ||
+        // Authenticated users can update likes and likeCount
+        (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likeCount', 'updatedAt']))
+        ||
         // Owners and admins can update everything
         (isOwner(resource.data.userId) || isAdmin())
       );
