@@ -15,6 +15,47 @@ import {
 } from "firebase/firestore"
 import { db, isFirebaseConfigured } from "./firebase"
 
+// Define Post and Comment interfaces here
+export interface Post {
+  id: string
+  userId: string
+  userName: string
+  userPicture: string
+  content: string
+  imageUrl?: string
+  likes: string[]
+  likeCount: number
+  commentCount: number
+  viewCount: number
+  createdAt: Timestamp
+  updatedAt: Timestamp
+}
+
+export interface Comment {
+  id: string
+  postId: string
+  userId: string
+  userName: string
+  userPicture: string
+  content: string
+  parentCommentId?: string
+  createdAt: Timestamp
+}
+
+export interface Notification {
+  id: string
+  type: "post_like" | "comment_reply" | "new_connection" | "connection_request_accepted"
+  fromUserId: string
+  fromUserName: string
+  fromUserPicture: string
+  toUserId: string
+  postId?: string
+  commentId?: string
+  commentContent?: string
+  read: boolean
+  createdAt: number
+}
+
 // Profile data structure
 export interface UserProfile {
   id: string
@@ -199,7 +240,7 @@ export async function searchProfiles(searchTerm: string, maxResults = 10, isAdmi
     console.log("[v0] Searching for profiles with term:", searchTerm, "Admin:", isAdmin)
 
     const profilesRef = collection(db, "profiles")
-    const searchLower = searchTerm.toLowerCase()
+    const searchLower = searchTerm.toLowerCase().trim()
 
     const q = isAdmin ? query(profilesRef, limit(50)) : query(profilesRef, where("isPublic", "==", true), limit(50))
 
@@ -209,8 +250,15 @@ export async function searchProfiles(searchTerm: string, maxResults = 10, isAdmi
     querySnapshot.forEach((doc) => {
       const profile = { id: doc.id, ...doc.data() } as UserProfile
       const profileNameLower = profile.profileName.toLowerCase()
+      const profileDescLower = profile.profileDescription.toLowerCase()
+      const searchKeywords = profile.searchKeywords || []
 
-      if (profileNameLower.includes(searchLower)) {
+      // Check if search term matches name, description, or keywords
+      const matchesName = profileNameLower.includes(searchLower)
+      const matchesDescription = profileDescLower.includes(searchLower)
+      const matchesKeywords = searchKeywords.some((keyword) => keyword.includes(searchLower))
+
+      if (matchesName || matchesDescription || matchesKeywords) {
         profiles.push(profile)
       }
     })
@@ -382,7 +430,7 @@ export async function searchProfileCards(searchTerm: string, maxResults = 10, is
     console.log("[v0] Searching for profiles with term:", searchTerm, "Admin:", isAdmin)
 
     const profilesRef = collection(db, "profiles")
-    const searchLower = searchTerm.toLowerCase()
+    const searchLower = searchTerm.toLowerCase().trim()
 
     // Fetch fewer profiles for search (30 instead of 50)
     const q = isAdmin ? query(profilesRef, limit(30)) : query(profilesRef, where("isPublic", "==", true), limit(30))
@@ -393,8 +441,29 @@ export async function searchProfileCards(searchTerm: string, maxResults = 10, is
     querySnapshot.forEach((doc) => {
       const data = doc.data() as UserProfile
       const profileNameLower = data.profileName.toLowerCase()
+      const profileDescLower = data.profileDescription.toLowerCase()
+      const searchKeywords = data.searchKeywords || []
 
-      if (profileNameLower.includes(searchLower)) {
+      // Check if search term matches:
+      // 1. Profile name
+      // 2. Profile description
+      // 3. Any of the generated keywords
+      const matchesName = profileNameLower.includes(searchLower)
+      const matchesDescription = profileDescLower.includes(searchLower)
+      const matchesKeywords = searchKeywords.some((keyword) => keyword.includes(searchLower))
+
+      console.log(
+        "[v0] Profile:",
+        data.profileName,
+        "- Name match:",
+        matchesName,
+        "Desc match:",
+        matchesDescription,
+        "Keyword match:",
+        matchesKeywords,
+      )
+
+      if (matchesName || matchesDescription || matchesKeywords) {
         const previewImages = data.showcaseItems
           .filter((item) => item.type === "image" && item.content)
           .slice(0, 4)

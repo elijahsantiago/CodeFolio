@@ -118,7 +118,7 @@ export function QuickProfileSetup({ onComplete, onSkip }: QuickProfileSetupProps
             <div className="flex items-center gap-2">
               <Input
                 type="file"
-                accept="image/*"
+                accept="image/*,.gif"
                 onChange={(e) => {
                   const file = e.target.files?.[0]
                   if (file) {
@@ -149,7 +149,8 @@ export function QuickProfileSetup({ onComplete, onSkip }: QuickProfileSetupProps
             )}
 
             <p className="text-xs text-muted-foreground">
-              Images will be automatically compressed to ensure fast loading. Max file size: 10MB
+              Images will be automatically compressed to ensure fast loading. GIFs are supported and will preserve
+              animation. Max file size: 10MB (15MB for GIFs)
             </p>
           </div>
         </div>

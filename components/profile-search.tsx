@@ -56,6 +56,32 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
     loadPublicProfiles()
   }, [firebaseAvailable, isAdmin])
 
+  useEffect(() => {
+    if (!firebaseAvailable) return
+
+    // If search term is empty, clear results and return
+    if (!searchTerm.trim()) {
+      setSearchResults([])
+      return
+    }
+
+    // Debounce the search - wait 300ms after user stops typing
+    const timeoutId = setTimeout(async () => {
+      setLoading(true)
+      try {
+        const results = await searchProfileCards(searchTerm, 10, isAdmin)
+        setSearchResults(results)
+      } catch (error) {
+        console.error("Error searching profiles:", error)
+      } finally {
+        setLoading(false)
+      }
+    }, 300)
+
+    // Cleanup function to cancel the timeout if searchTerm changes again
+    return () => clearTimeout(timeoutId)
+  }, [searchTerm, firebaseAvailable, isAdmin])
+
   const handleLoadMore = async () => {
     if (!firebaseAvailable || !hasMore || loadingMore) return
 
