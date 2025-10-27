@@ -32,9 +32,17 @@ interface PostCardProps {
   onPostDeleted?: (postId: string) => void
   isClickable?: boolean
   onPostClick?: () => void
+  showFullImage?: boolean
 }
 
-export function PostCard({ post, currentUserId, onPostDeleted, isClickable = true, onPostClick }: PostCardProps) {
+export function PostCard({
+  post,
+  currentUserId,
+  onPostDeleted,
+  isClickable = true,
+  onPostClick,
+  showFullImage = false,
+}: PostCardProps) {
   const [isLiked, setIsLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(post.likeCount || 0)
   const [commentCount, setCommentCount] = useState(post.commentCount || 0)
@@ -286,7 +294,11 @@ export function PostCard({ post, currentUserId, onPostDeleted, isClickable = tru
 
         {post.imageUrl && (
           <div className="rounded-lg overflow-hidden border">
-            <img src={post.imageUrl || "/placeholder.svg"} alt="Post image" className="w-full max-h-96 object-cover" />
+            <img
+              src={post.imageUrl || "/placeholder.svg"}
+              alt="Post image"
+              className={`w-full ${showFullImage ? "" : "max-h-96"} object-contain`}
+            />
           </div>
         )}
       </div>

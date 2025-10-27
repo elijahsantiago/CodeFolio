@@ -105,7 +105,13 @@ export default function PostPage() {
           Back to Feed
         </Button>
 
-        <PostCard post={post} currentUserId={user?.uid} onPostDeleted={handlePostDeleted} isClickable={false} />
+        <PostCard
+          post={post}
+          currentUserId={user?.uid}
+          onPostDeleted={handlePostDeleted}
+          isClickable={false}
+          showFullImage={true}
+        />
       </div>
     </div>
   )
