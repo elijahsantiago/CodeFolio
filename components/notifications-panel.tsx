@@ -153,7 +153,7 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
   }
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen} modal={false}>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="icon" className="relative bg-transparent" style={buttonStyle}>
           <Bell className="h-5 w-5" />
@@ -167,7 +167,17 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-96 p-0" sideOffset={8}>
+      <DropdownMenuContent
+        align="end"
+        side="bottom"
+        avoidCollisions={false}
+        className="w-96 p-0 min-h-[100px]"
+        sideOffset={8}
+        style={{
+          zIndex: 9999,
+          position: "fixed",
+        }}
+      >
         <div className="p-4 border-b">
           <h3 className="font-semibold text-base">Notifications</h3>
         </div>
