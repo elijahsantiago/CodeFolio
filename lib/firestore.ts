@@ -1398,7 +1398,7 @@ export async function addComment(
       userName,
       userPicture,
       content: content.trim(),
-      parentCommentId: parentCommentId || undefined,
+      ...(parentCommentId && { parentCommentId }),
       createdAt: serverTimestamp() as Timestamp,
     }
 
