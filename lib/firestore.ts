@@ -1428,35 +1428,51 @@ export async function addComment(
         commentCount: (post.commentCount || 0) + 1,
         updatedAt: serverTimestamp(),
       })
-    }
 
-    if (parentCommentId) {
-      try {
-        const parentCommentRef = doc(db, "posts", postId, "comments", parentCommentId)
-        const parentCommentSnap = await getDoc(parentCommentRef)
+      if (parentCommentId) {
+        try {
+          const parentCommentRef = doc(db, "posts", postId, "comments", parentCommentId)
+          const parentCommentSnap = await getDoc(parentCommentRef)
 
-        if (parentCommentSnap.exists()) {
-          const parentComment = parentCommentSnap.data() as Comment
+          if (parentCommentSnap.exists()) {
+            const parentComment = parentCommentSnap.data() as Comment
 
-          // Only create notification if replying to someone else's comment
-          if (parentComment.userId !== userId) {
-            await createNotification({
-              type: "comment_reply",
-              fromUserId: userId,
-              fromUserName: userName,
-              fromUserPicture: userPicture,
-              toUserId: parentComment.userId,
-              postId,
-              commentId: newCommentRef.id,
-              commentContent: content.trim().substring(0, 100), // Preview of reply
-              read: false,
-              createdAt: Date.now(),
-            })
+            // Send notification to the person whose comment was replied to
+            if (parentComment.userId !== userId) {
+              await createNotification({
+                type: "comment_reply",
+                fromUserId: userId,
+                fromUserName: userName,
+                fromUserPicture: userPicture,
+                toUserId: parentComment.userId,
+                postId,
+                commentId: newCommentRef.id,
+                commentContent: content.trim().substring(0, 100),
+                read: false,
+                createdAt: Date.now(),
+              })
+            }
+
+            // Also send notification to post creator if they're not the commenter or the parent comment author
+            if (post.userId !== userId && post.userId !== parentComment.userId) {
+              await createNotification({
+                type: "comment_reply",
+                fromUserId: userId,
+                fromUserName: userName,
+                fromUserPicture: userPicture,
+                toUserId: post.userId,
+                postId,
+                commentId: newCommentRef.id,
+                commentContent: content.trim().substring(0, 100),
+                read: false,
+                createdAt: Date.now(),
+              })
+            }
           }
+        } catch (notificationError) {
+          console.error("[v0] Error creating reply notification:", notificationError)
+          // Don't fail the comment creation if notification fails
         }
-      } catch (notificationError) {
-        console.error("[v0] Error creating reply notification:", notificationError)
-        // Don't fail the comment creation if notification fails
       }
     }
 
