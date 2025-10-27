@@ -182,8 +182,6 @@ export default function ProfileViewPage() {
     }
   }
 
-  const fromFeed = searchParams.get("from") === "feed"
-
   if (!firebaseAvailable) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">

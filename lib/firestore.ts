@@ -72,50 +72,6 @@ export interface ConnectionRequest {
   respondedAt?: number
 }
 
-export interface Notification {
-  id: string
-  type: "comment_reply" | "connection_request" | "post_like" // Added post_like type
-  fromUserId: string
-  fromUserName: string
-  fromUserPicture: string
-  toUserId: string
-  postId?: string // For comment replies and post likes
-  commentId?: string // For comment replies
-  commentContent?: string // Preview of the reply
-  read: boolean
-  createdAt: number
-}
-
-export interface Post {
-  id: string
-  userId: string
-  userName: string
-  userPicture: string
-  content: string
-  imageUrl?: string
-  likes: string[] // Array of user IDs who liked
-  likeCount: number
-  commentCount: number
-  viewCount: number
-  createdAt: Timestamp
-  updatedAt: Timestamp
-}
-
-export interface Comment {
-  id: string
-  postId: string
-  userId: string
-  userName: string
-  userPicture: string
-  content: string
-  parentCommentId?: string // Added parentCommentId field
-  createdAt: Timestamp
-}
-
-export interface PostWithComments extends Post {
-  comments: Comment[]
-}
-
 export interface ProfileCard {
   id: string
   userId: string
