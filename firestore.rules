@@ -90,5 +90,23 @@ service cloud.firestore {
           || isAdmin();
       }
     }
+    
+    // Notifications rules
+    match /notifications/{notificationId} {
+      // Users can read their own notifications
+      allow read: if isAuthenticated() 
+        && resource.data.toUserId == request.auth.uid;
+      
+      // Authenticated users can create notifications
+      allow create: if isAuthenticated();
+      
+      // Users can update their own notifications (mark as read)
+      allow update: if isAuthenticated() 
+        && resource.data.toUserId == request.auth.uid;
+      
+      // Users can delete their own notifications
+      allow delete: if isAuthenticated() 
+        && resource.data.toUserId == request.auth.uid;
+    }
   }
 }

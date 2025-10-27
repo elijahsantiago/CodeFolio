@@ -72,6 +72,20 @@ export interface ConnectionRequest {
   respondedAt?: number
 }
 
+export interface Notification {
+  id: string
+  type: "comment_reply" | "connection_request"
+  fromUserId: string
+  fromUserName: string
+  fromUserPicture: string
+  toUserId: string
+  postId?: string // For comment replies
+  commentId?: string // For comment replies
+  commentContent?: string // Preview of the reply
+  read: boolean
+  createdAt: number
+}
+
 export interface Post {
   id: string
   userId: string
@@ -1416,6 +1430,36 @@ export async function addComment(
       })
     }
 
+    if (parentCommentId) {
+      try {
+        const parentCommentRef = doc(db, "posts", postId, "comments", parentCommentId)
+        const parentCommentSnap = await getDoc(parentCommentRef)
+
+        if (parentCommentSnap.exists()) {
+          const parentComment = parentCommentSnap.data() as Comment
+
+          // Only create notification if replying to someone else's comment
+          if (parentComment.userId !== userId) {
+            await createNotification({
+              type: "comment_reply",
+              fromUserId: userId,
+              fromUserName: userName,
+              fromUserPicture: userPicture,
+              toUserId: parentComment.userId,
+              postId,
+              commentId: newCommentRef.id,
+              commentContent: content.trim().substring(0, 100), // Preview of reply
+              read: false,
+              createdAt: Date.now(),
+            })
+          }
+        }
+      } catch (notificationError) {
+        console.error("[v0] Error creating reply notification:", notificationError)
+        // Don't fail the comment creation if notification fails
+      }
+    }
+
     return newCommentRef.id
   } catch (error: any) {
     console.error("[v0] Error adding comment:", error)
@@ -1649,5 +1693,139 @@ export async function deleteComment(postId: string, commentId: string, userId: s
   } catch (error: any) {
     console.error("[v0] Error deleting comment:", error)
     throw error
+  }
+}
+
+export async function createNotification(notification: Omit<Notification, "id">): Promise<string> {
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase not configured")
+  }
+
+  if (!db) {
+    throw new Error("Firestore database not initialized")
+  }
+
+  try {
+    const notificationsRef = collection(db, "notifications")
+    const newNotificationRef = doc(notificationsRef)
+
+    await setDoc(newNotificationRef, notification)
+    console.log("[v0] Notification created successfully:", newNotificationRef.id)
+    return newNotificationRef.id
+  } catch (error: any) {
+    console.error("[v0] Error creating notification:", error)
+    throw error
+  }
+}
+
+export async function getUserNotifications(userId: string, maxResults = 50): Promise<Notification[]> {
+  if (!isFirebaseConfigured()) {
+    return []
+  }
+
+  if (!db) {
+    return []
+  }
+
+  try {
+    const notificationsRef = collection(db, "notifications")
+    const q = query(notificationsRef, where("toUserId", "==", userId), orderBy("createdAt", "desc"), limit(maxResults))
+
+    const querySnapshot = await getDocs(q)
+    const notifications: Notification[] = []
+
+    querySnapshot.forEach((doc) => {
+      notifications.push({ id: doc.id, ...doc.data() } as Notification)
+    })
+
+    return notifications
+  } catch (error: any) {
+    console.error("[v0] Error getting notifications:", error)
+    return []
+  }
+}
+
+export async function getUnreadNotificationCount(userId: string): Promise<number> {
+  if (!isFirebaseConfigured()) {
+    return 0
+  }
+
+  if (!db) {
+    return 0
+  }
+
+  try {
+    const notificationsRef = collection(db, "notifications")
+    const q = query(notificationsRef, where("toUserId", "==", userId), where("read", "==", false))
+
+    const querySnapshot = await getDocs(q)
+    return querySnapshot.size
+  } catch (error: any) {
+    console.error("[v0] Error getting unread notification count:", error)
+    return 0
+  }
+}
+
+export async function markNotificationAsRead(notificationId: string): Promise<void> {
+  if (!isFirebaseConfigured()) {
+    return
+  }
+
+  if (!db) {
+    return
+  }
+
+  try {
+    const notificationRef = doc(db, "notifications", notificationId)
+    await updateDoc(notificationRef, {
+      read: true,
+    })
+  } catch (error: any) {
+    console.error("[v0] Error marking notification as read:", error)
+  }
+}
+
+export async function markAllNotificationsAsRead(userId: string): Promise<void> {
+  if (!isFirebaseConfigured()) {
+    return
+  }
+
+  if (!db) {
+    return
+  }
+
+  try {
+    const notificationsRef = collection(db, "notifications")
+    const q = query(notificationsRef, where("toUserId", "==", userId), where("read", "==", false))
+
+    const querySnapshot = await getDocs(q)
+    const updatePromises = querySnapshot.docs.map((doc) =>
+      updateDoc(doc.ref, {
+        read: true,
+      }),
+    )
+
+    await Promise.all(updatePromises)
+    console.log("[v0] All notifications marked as read")
+  } catch (error: any) {
+    console.error("[v0] Error marking all notifications as read:", error)
+  }
+}
+
+export async function deleteNotification(notificationId: string): Promise<void> {
+  if (!isFirebaseConfigured()) {
+    return
+  }
+
+  if (!db) {
+    return
+  }
+
+  try {
+    const notificationRef = doc(db, "notifications", notificationId)
+    await deleteDoc(notificationRef)
+    console.log("[v0] Notification deleted successfully:", notificationId)
+  } catch (error: any) {
+    console.error("[v0] Error deleting notification:", error)
   }
 }
