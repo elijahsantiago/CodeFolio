@@ -171,12 +171,8 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
         align="end"
         side="bottom"
         avoidCollisions={false}
-        className="w-96 p-0 min-h-[100px]"
+        className="w-96 p-0 min-h-[100px] z-[9999]"
         sideOffset={8}
-        style={{
-          zIndex: 9999,
-          position: "fixed",
-        }}
       >
         <div className="p-4 border-b">
           <h3 className="font-semibold text-base">Notifications</h3>
