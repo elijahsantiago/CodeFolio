@@ -1513,3 +1513,97 @@ export async function deletePost(postId: string, userId: string): Promise<void> 
     throw error
   }
 }
+
+// Admin function to delete any post
+export async function adminDeletePost(adminEmail: string, postId: string): Promise<void> {
+  if (adminEmail !== "e.santiago.e1@gmail.com" && adminEmail !== "gabeasosa@gmail.com") {
+    throw new Error("Unauthorized: Admin access required")
+  }
+
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase not configured")
+  }
+
+  if (!db) {
+    throw new Error("Firestore database not initialized")
+  }
+
+  try {
+    console.log("[v0] Admin deleting post:", postId)
+    const postRef = doc(db, "posts", postId)
+    const postSnap = await getDoc(postRef)
+
+    if (!postSnap.exists()) {
+      throw new Error("Post not found")
+    }
+
+    // Delete all comments first
+    const commentsRef = collection(db, "posts", postId, "comments")
+    const commentsSnapshot = await getDocs(commentsRef)
+
+    const deletePromises = commentsSnapshot.docs.map((doc) => doc.ref.delete())
+    await Promise.all(deletePromises)
+
+    // Delete the post
+    await postRef.delete()
+    console.log("[v0] Post deleted successfully by admin:", postId)
+  } catch (error: any) {
+    console.error("[v0] Error deleting post:", error)
+    if (error?.code === "permission-denied") {
+      throw new Error(
+        "Admin permissions not configured in Firestore. Please update your Firestore security rules to enable admin functionality.",
+      )
+    }
+    throw error
+  }
+}
+
+// Admin function to delete any comment
+export async function adminDeleteComment(adminEmail: string, postId: string, commentId: string): Promise<void> {
+  if (adminEmail !== "e.santiago.e1@gmail.com" && adminEmail !== "gabeasosa@gmail.com") {
+    throw new Error("Unauthorized: Admin access required")
+  }
+
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase not configured")
+  }
+
+  if (!db) {
+    throw new Error("Firestore database not initialized")
+  }
+
+  try {
+    console.log("[v0] Admin deleting comment:", commentId, "from post:", postId)
+    const commentRef = doc(db, "posts", postId, "comments", commentId)
+    const commentSnap = await getDoc(commentRef)
+
+    if (!commentSnap.exists()) {
+      throw new Error("Comment not found")
+    }
+
+    // Delete the comment
+    await commentRef.delete()
+
+    // Update comment count on post
+    const postRef = doc(db, "posts", postId)
+    const postSnap = await getDoc(postRef)
+
+    if (postSnap.exists()) {
+      const post = postSnap.data() as Post
+      await updateDoc(postRef, {
+        commentCount: Math.max(0, (post.commentCount || 0) - 1),
+        updatedAt: serverTimestamp(),
+      })
+    }
+
+    console.log("[v0] Comment deleted successfully by admin:", commentId)
+  } catch (error: any) {
+    console.error("[v0] Error deleting comment:", error)
+    if (error?.code === "permission-denied") {
+      throw new Error(
+        "Admin permissions not configured in Firestore. Please update your Firestore security rules to enable admin functionality.",
+      )
+    }
+    throw error
+  }
+}

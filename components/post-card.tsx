@@ -11,10 +11,13 @@ import {
   getComments,
   incrementPostView,
   deletePost,
+  adminDeletePost,
+  adminDeleteComment,
   type Post,
   type Comment,
 } from "@/lib/firestore"
 import { useProfile } from "@/hooks/use-profile"
+import { useAuth } from "@/hooks/use-auth"
 import { formatDistanceToNow } from "date-fns"
 
 interface PostCardProps {
@@ -35,6 +38,10 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
   const [submittingComment, setSubmittingComment] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const { profile } = useProfile()
+  const { user } = useAuth()
+
+  const isAdmin = user?.email === "e.santiago.e1@gmail.com" || user?.email === "gabeasosa@gmail.com"
+  const canDeletePost = currentUserId === post.userId || isAdmin
 
   useEffect(() => {
     if (currentUserId) {
@@ -47,7 +54,6 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
   }, [post.commentCount])
 
   useEffect(() => {
-    // Increment view count when post is rendered
     if (post.id) {
       incrementPostView(post.id)
     }
@@ -64,14 +70,13 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
       await toggleLikePost(post.id, currentUserId)
     } catch (error) {
       console.error("[v0] Error toggling like:", error)
-      // Revert on error
       setIsLiked(!isLiked)
       setLikeCount((prev) => (isLiked ? prev + 1 : Math.max(0, prev - 1)))
     }
   }
 
   const loadComments = async () => {
-    if (comments.length > 0) return // Already loaded
+    if (comments.length > 0) return
 
     setLoadingComments(true)
     try {
@@ -128,19 +133,38 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
   }
 
   const handleDelete = async () => {
-    if (!currentUserId || post.userId !== currentUserId) return
+    if (!currentUserId || !canDeletePost) return
 
     if (!confirm("Are you sure you want to delete this post?")) return
 
     setDeleting(true)
     try {
-      await deletePost(post.id, currentUserId)
+      if (isAdmin && currentUserId !== post.userId) {
+        await adminDeletePost(user?.email || "", post.id)
+      } else {
+        await deletePost(post.id, currentUserId)
+      }
       onPostDeleted?.(post.id)
     } catch (error) {
       console.error("[v0] Error deleting post:", error)
       alert("Failed to delete post")
     } finally {
       setDeleting(false)
+    }
+  }
+
+  const handleDeleteComment = async (commentId: string, commentUserId: string) => {
+    if (!currentUserId || (!isAdmin && currentUserId !== commentUserId)) return
+
+    if (!confirm("Are you sure you want to delete this comment?")) return
+
+    try {
+      await adminDeleteComment(user?.email || "", post.id, commentId)
+      setComments((prev) => prev.filter((c) => c.id !== commentId))
+      setCommentCount((prev) => Math.max(0, prev - 1))
+    } catch (error) {
+      console.error("[v0] Error deleting comment:", error)
+      alert("Failed to delete comment")
     }
   }
 
@@ -187,7 +211,7 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
           </div>
         </div>
 
-        {currentUserId === post.userId && (
+        {canDeletePost && (
           <Button
             variant="ghost"
             size="sm"
@@ -247,6 +271,7 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {topLevelComments.map((comment) => {
                     const replies = getReplies(comment.id)
+                    const canDeleteComment = currentUserId === comment.userId || isAdmin
                     return (
                       <div key={comment.id} className="space-y-2">
                         <div className="flex gap-3">
@@ -260,6 +285,16 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
                               <div className="flex items-center gap-2 mb-1">
                                 <p className="font-semibold text-sm">{comment.userName}</p>
                                 <p className="text-xs text-muted-foreground">{formatTimestamp(comment.createdAt)}</p>
+                                {canDeleteComment && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteComment(comment.id, comment.userId)}
+                                    className="h-5 w-5 p-0 ml-auto text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                )}
                               </div>
                               <p className="text-sm leading-relaxed">{comment.content}</p>
                             </div>
@@ -279,37 +314,52 @@ export function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) 
 
                         {replies.length > 0 && (
                           <div className="ml-11 space-y-2">
-                            {replies.map((reply) => (
-                              <div key={reply.id} className="flex gap-3">
-                                <img
-                                  src={reply.userPicture || "/placeholder.svg?height=28&width=28&query=profile avatar"}
-                                  alt={reply.userName}
-                                  className="w-7 h-7 rounded-full object-cover flex-shrink-0"
-                                />
-                                <div className="flex-1">
-                                  <div className="bg-muted/70 rounded-lg p-2.5">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <p className="font-semibold text-xs">{reply.userName}</p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {formatTimestamp(reply.createdAt)}
-                                      </p>
+                            {replies.map((reply) => {
+                              const canDeleteReply = currentUserId === reply.userId || isAdmin
+                              return (
+                                <div key={reply.id} className="flex gap-3">
+                                  <img
+                                    src={
+                                      reply.userPicture || "/placeholder.svg?height=28&width=28&query=profile avatar"
+                                    }
+                                    alt={reply.userName}
+                                    className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                                  />
+                                  <div className="flex-1">
+                                    <div className="bg-muted/70 rounded-lg p-2.5">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <p className="font-semibold text-xs">{reply.userName}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {formatTimestamp(reply.createdAt)}
+                                        </p>
+                                        {canDeleteReply && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleDeleteComment(reply.id, reply.userId)}
+                                            className="h-5 w-5 p-0 ml-auto text-destructive hover:text-destructive hover:bg-destructive/10"
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </Button>
+                                        )}
+                                      </div>
+                                      <p className="text-sm leading-relaxed">{reply.content}</p>
                                     </div>
-                                    <p className="text-sm leading-relaxed">{reply.content}</p>
+                                    {currentUserId && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleReply(comment.id, reply.userName)}
+                                        className="mt-1 h-6 text-xs gap-1"
+                                      >
+                                        <Reply className="h-3 w-3" />
+                                        Reply
+                                      </Button>
+                                    )}
                                   </div>
-                                  {currentUserId && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleReply(comment.id, reply.userName)}
-                                      className="mt-1 h-6 text-xs gap-1"
-                                    >
-                                      <Reply className="h-3 w-3" />
-                                      Reply
-                                    </Button>
-                                  )}
                                 </div>
-                              </div>
-                            ))}
+                              )
+                            })}
                           </div>
                         )}
                       </div>
