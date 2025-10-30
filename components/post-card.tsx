@@ -13,7 +13,7 @@ import {
   getComments,
   incrementPostView,
   deletePost,
-  deleteComment, // Added deleteComment import
+  deleteComment,
   adminDeletePost,
   adminDeleteComment,
   type Post,
@@ -32,13 +32,23 @@ interface PostCardProps {
   onPostDeleted?: (postId: string) => void
   isClickable?: boolean
   onPostClick?: () => void
+  autoShowComments?: boolean
+  commentsLayout?: "below" | "side"
 }
 
-export function PostCard({ post, currentUserId, onPostDeleted, isClickable = true, onPostClick }: PostCardProps) {
+export function PostCard({
+  post,
+  currentUserId,
+  onPostDeleted,
+  isClickable = true,
+  onPostClick,
+  autoShowComments = false,
+  commentsLayout = "below",
+}: PostCardProps) {
   const [isLiked, setIsLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(post.likeCount || 0)
   const [commentCount, setCommentCount] = useState(post.commentCount || 0)
-  const [showComments, setShowComments] = useState(false)
+  const [showComments, setShowComments] = useState(autoShowComments)
   const [comments, setComments] = useState<Comment[]>([])
   const [commentText, setCommentText] = useState("")
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
@@ -85,6 +95,12 @@ export function PostCard({ post, currentUserId, onPostDeleted, isClickable = tru
       incrementPostView(post.id)
     }
   }, [post.id])
+
+  useEffect(() => {
+    if (autoShowComments) {
+      loadComments()
+    }
+  }, [autoShowComments])
 
   const handleLike = async () => {
     if (!currentUserId || !profile) return
@@ -247,6 +263,255 @@ export function PostCard({ post, currentUserId, onPostDeleted, isClickable = tru
     onPostClick()
   }
 
+  const renderCommentsSection = () => (
+    <div className="space-y-4">
+      {loadingComments ? (
+        <p className="text-sm text-muted-foreground text-center py-4">Loading comments...</p>
+      ) : (
+        <>
+          {comments.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No comments yet. Be the first to comment!</p>
+          ) : (
+            <div className="space-y-3 max-h-[600px] overflow-y-auto">
+              {topLevelComments.map((comment) => {
+                const replies = getReplies(comment.id)
+                const canDeleteComment = currentUserId === comment.userId || isAdmin
+                return (
+                  <div key={comment.id} className="space-y-2">
+                    <div className="flex gap-3">
+                      <img
+                        src={comment.userPicture || "/placeholder.svg?height=32&width=32&query=profile avatar"}
+                        alt={comment.userName}
+                        className="w-8 h-8 rounded-full object-cover flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => navigateToProfile(comment.userId)}
+                      />
+                      <div className="flex-1">
+                        <div className="bg-muted rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p
+                              className="font-semibold text-sm cursor-pointer hover:underline"
+                              onClick={() => navigateToProfile(comment.userId)}
+                            >
+                              {comment.userName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{formatTimestamp(comment.createdAt)}</p>
+                            {canDeleteComment && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteComment(comment.id, comment.userId)}
+                                className="h-5 w-5 p-0 ml-auto text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                          <p className="text-sm leading-relaxed">{comment.content}</p>
+                        </div>
+                        {currentUserId && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleReply(comment.id, comment.userName)}
+                            className="mt-1 h-7 text-xs gap-1"
+                          >
+                            <Reply className="h-3 w-3" />
+                            Reply
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {replies.length > 0 && (
+                      <div className="ml-11 space-y-2">
+                        {replies.map((reply) => {
+                          const canDeleteReply = currentUserId === reply.userId || isAdmin
+                          return (
+                            <div key={reply.id} className="flex gap-3">
+                              <img
+                                src={reply.userPicture || "/placeholder.svg?height=28&width=28&query=profile avatar"}
+                                alt={reply.userName}
+                                className="w-7 h-7 rounded-full object-cover flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => navigateToProfile(reply.userId)}
+                              />
+                              <div className="flex-1">
+                                <div className="bg-muted/70 rounded-lg p-2.5">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <p
+                                      className="font-semibold text-xs cursor-pointer hover:underline"
+                                      onClick={() => navigateToProfile(reply.userId)}
+                                    >
+                                      {reply.userName}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">{formatTimestamp(reply.createdAt)}</p>
+                                    {canDeleteReply && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleDeleteComment(reply.id, reply.userId)}
+                                        className="h-5 w-5 p-0 ml-auto text-destructive hover:text-destructive hover:bg-destructive/10"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                  <p className="text-sm leading-relaxed">{reply.content}</p>
+                                </div>
+                                {currentUserId && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleReply(comment.id, reply.userName)}
+                                    className="mt-1 h-6 text-xs gap-1"
+                                  >
+                                    <Reply className="h-3 w-3" />
+                                    Reply
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {currentUserId && profile && (
+            <div className="space-y-2 pt-2">
+              {replyingTo && (
+                <div className="flex items-center justify-between bg-muted/50 rounded px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">
+                    Replying to <span className="font-semibold">{getParentComment(replyingTo)?.userName}</span>
+                  </span>
+                  <Button variant="ghost" size="sm" onClick={handleCancelReply} className="h-6 text-xs">
+                    Cancel
+                  </Button>
+                </div>
+              )}
+              <div className="flex gap-3">
+                <img
+                  src={profile.profilePicture || "/placeholder.svg?height=32&width=32&query=profile avatar"}
+                  alt="Your avatar"
+                  className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                />
+                <div className="flex-1 flex gap-2">
+                  <Textarea
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder={replyingTo ? "Write a reply..." : "Write a comment..."}
+                    className="min-h-[60px] resize-none"
+                    disabled={submittingComment}
+                  />
+                  <Button
+                    onClick={handleSubmitComment}
+                    disabled={!commentText.trim() || submittingComment}
+                    size="sm"
+                    className="self-end"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+
+  if (commentsLayout === "side") {
+    return (
+      <div className="flex gap-6 items-start">
+        {/* Post Card - centered and fixed width */}
+        <Card
+          className={`flex-shrink-0 w-full max-w-2xl p-6 space-y-4 ${isClickable ? "cursor-pointer hover:shadow-lg transition-shadow" : ""}`}
+          onClick={handleCardClick}
+        >
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <img
+                src={post.userPicture || "/placeholder.svg?height=40&width=40&query=profile avatar"}
+                alt={post.userName}
+                className="w-10 h-10 rounded-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => navigateToProfile(post.userId)}
+              />
+              <div>
+                <p
+                  className="font-semibold cursor-pointer hover:underline"
+                  onClick={() => navigateToProfile(post.userId)}
+                >
+                  {post.userName}
+                </p>
+                <p className="text-sm text-muted-foreground">{formatTimestamp(post.createdAt)}</p>
+              </div>
+            </div>
+
+            {canDeletePost && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-base leading-relaxed whitespace-pre-wrap">{post.content}</p>
+
+            {post.imageUrl && (
+              <div className="rounded-lg overflow-hidden border">
+                <img
+                  src={post.imageUrl || "/placeholder.svg"}
+                  alt="Post image"
+                  className="w-full max-h-96 object-cover"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-6 pt-2 border-t">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLike}
+              disabled={!currentUserId}
+              className={`gap-2 ${isLiked ? "text-red-500 hover:text-red-600" : ""}`}
+            >
+              <Heart className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
+              <span>{likeCount}</span>
+            </Button>
+
+            <Button variant="ghost" size="sm" onClick={handleToggleComments} className="gap-2">
+              <MessageCircle className="h-4 w-4" />
+              <span>{commentCount}</span>
+            </Button>
+
+            <div className="flex items-center gap-2 text-muted-foreground text-sm ml-auto">
+              <Eye className="h-4 w-4" />
+              <span>{post.viewCount || 0}</span>
+            </div>
+          </div>
+        </Card>
+
+        {/* Comments Panel - to the right */}
+        {showComments && (
+          <Card className="flex-1 min-w-[400px] max-w-xl p-6">
+            <h3 className="font-semibold text-lg mb-4">Comments ({commentCount})</h3>
+            {renderCommentsSection()}
+          </Card>
+        )}
+      </div>
+    )
+  }
+
   return (
     <Card
       className={`p-6 space-y-4 ${isClickable ? "cursor-pointer hover:shadow-lg transition-shadow" : ""}`}
@@ -314,171 +579,7 @@ export function PostCard({ post, currentUserId, onPostDeleted, isClickable = tru
         </div>
       </div>
 
-      {showComments && (
-        <div className="space-y-4 pt-4 border-t">
-          {loadingComments ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Loading comments...</p>
-          ) : (
-            <>
-              {comments.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No comments yet. Be the first to comment!
-                </p>
-              ) : (
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {topLevelComments.map((comment) => {
-                    const replies = getReplies(comment.id)
-                    const canDeleteComment = currentUserId === comment.userId || isAdmin
-                    return (
-                      <div key={comment.id} className="space-y-2">
-                        <div className="flex gap-3">
-                          <img
-                            src={comment.userPicture || "/placeholder.svg?height=32&width=32&query=profile avatar"}
-                            alt={comment.userName}
-                            className="w-8 h-8 rounded-full object-cover flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => navigateToProfile(comment.userId)}
-                          />
-                          <div className="flex-1">
-                            <div className="bg-muted rounded-lg p-3">
-                              <div className="flex items-center gap-2 mb-1">
-                                <p
-                                  className="font-semibold text-sm cursor-pointer hover:underline"
-                                  onClick={() => navigateToProfile(comment.userId)}
-                                >
-                                  {comment.userName}
-                                </p>
-                                <p className="text-xs text-muted-foreground">{formatTimestamp(comment.createdAt)}</p>
-                                {canDeleteComment && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDeleteComment(comment.id, comment.userId)}
-                                    className="h-5 w-5 p-0 ml-auto text-destructive hover:text-destructive hover:bg-destructive/10"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                )}
-                              </div>
-                              <p className="text-sm leading-relaxed">{comment.content}</p>
-                            </div>
-                            {currentUserId && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleReply(comment.id, comment.userName)}
-                                className="mt-1 h-7 text-xs gap-1"
-                              >
-                                <Reply className="h-3 w-3" />
-                                Reply
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-
-                        {replies.length > 0 && (
-                          <div className="ml-11 space-y-2">
-                            {replies.map((reply) => {
-                              const canDeleteReply = currentUserId === reply.userId || isAdmin
-                              return (
-                                <div key={reply.id} className="flex gap-3">
-                                  <img
-                                    src={
-                                      reply.userPicture || "/placeholder.svg?height=28&width=28&query=profile avatar"
-                                    }
-                                    alt={reply.userName}
-                                    className="w-7 h-7 rounded-full object-cover flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                                    onClick={() => navigateToProfile(reply.userId)}
-                                  />
-                                  <div className="flex-1">
-                                    <div className="bg-muted/70 rounded-lg p-2.5">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <p
-                                          className="font-semibold text-xs cursor-pointer hover:underline"
-                                          onClick={() => navigateToProfile(reply.userId)}
-                                        >
-                                          {reply.userName}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                          {formatTimestamp(reply.createdAt)}
-                                        </p>
-                                        {canDeleteReply && (
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleDeleteComment(reply.id, reply.userId)}
-                                            className="h-5 w-5 p-0 ml-auto text-destructive hover:text-destructive hover:bg-destructive/10"
-                                          >
-                                            <Trash2 className="h-3 w-3" />
-                                          </Button>
-                                        )}
-                                      </div>
-                                      <p className="text-sm leading-relaxed">{reply.content}</p>
-                                    </div>
-                                    {currentUserId && (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleReply(comment.id, reply.userName)}
-                                        className="mt-1 h-6 text-xs gap-1"
-                                      >
-                                        <Reply className="h-3 w-3" />
-                                        Reply
-                                      </Button>
-                                    )}
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-
-              {currentUserId && profile && (
-                <div className="space-y-2 pt-2">
-                  {replyingTo && (
-                    <div className="flex items-center justify-between bg-muted/50 rounded px-3 py-2 text-sm">
-                      <span className="text-muted-foreground">
-                        Replying to <span className="font-semibold">{getParentComment(replyingTo)?.userName}</span>
-                      </span>
-                      <Button variant="ghost" size="sm" onClick={handleCancelReply} className="h-6 text-xs">
-                        Cancel
-                      </Button>
-                    </div>
-                  )}
-                  <div className="flex gap-3">
-                    <img
-                      src={profile.profilePicture || "/placeholder.svg?height=32&width=32&query=profile avatar"}
-                      alt="Your avatar"
-                      className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                    />
-                    <div className="flex-1 flex gap-2">
-                      <Textarea
-                        value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
-                        placeholder={replyingTo ? "Write a reply..." : "Write a comment..."}
-                        className="min-h-[60px] resize-none"
-                        disabled={submittingComment}
-                      />
-                      <Button
-                        onClick={handleSubmitComment}
-                        disabled={!commentText.trim() || submittingComment}
-                        size="sm"
-                        className="self-end"
-                      >
-                        <Send className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
+      {showComments && <div className="space-y-4 pt-4 border-t">{renderCommentsSection()}</div>}
     </Card>
   )
 }
