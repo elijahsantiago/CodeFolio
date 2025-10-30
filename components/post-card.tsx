@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Heart, MessageCircle, Eye, Trash2, Send, Reply } from "lucide-react"
+import { Heart, MessageCircle, Eye, Trash2, Send, Reply, X } from "lucide-react"
 import {
   toggleLikePost,
   addComment,
@@ -55,6 +55,7 @@ export function PostCard({
   const [loadingComments, setLoadingComments] = useState(false)
   const [submittingComment, setSubmittingComment] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showFullImage, setShowFullImage] = useState(false)
   const { profile } = useProfile()
   const { user } = useAuth()
   const router = useRouter()
@@ -263,6 +264,28 @@ export function PostCard({
     onPostClick()
   }
 
+  const renderTextWithHashtags = (text: string) => {
+    const parts = text.split(/(\s+)/)
+    return parts.map((part, index) => {
+      if (part.match(/^#\w+/)) {
+        return (
+          <span
+            key={index}
+            className="text-primary font-semibold cursor-pointer hover:underline"
+            onClick={(e) => {
+              e.stopPropagation()
+              // TODO: Navigate to hashtag search page
+              console.log("[v0] Clicked hashtag:", part)
+            }}
+          >
+            {part}
+          </span>
+        )
+      }
+      return <span key={index}>{part}</span>
+    })
+  }
+
   const renderCommentsSection = () => (
     <div className="space-y-4">
       {loadingComments ? (
@@ -464,16 +487,46 @@ export function PostCard({
           </div>
 
           <div className="space-y-3">
-            <p className="text-base leading-relaxed whitespace-pre-wrap">{post.content}</p>
+            <p className="text-base leading-relaxed whitespace-pre-wrap">{renderTextWithHashtags(post.content)}</p>
 
             {post.imageUrl && (
-              <div className="rounded-lg overflow-hidden border">
-                <img
-                  src={post.imageUrl || "/placeholder.svg"}
-                  alt="Post image"
-                  className="w-full max-h-96 object-cover"
-                />
-              </div>
+              <>
+                <div
+                  className="rounded-lg overflow-hidden border cursor-pointer hover:opacity-95 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowFullImage(true)
+                  }}
+                >
+                  <img
+                    src={post.imageUrl || "/placeholder.svg"}
+                    alt="Post image"
+                    className="w-full max-h-[600px] object-contain bg-muted"
+                  />
+                </div>
+
+                {showFullImage && (
+                  <div
+                    className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+                    onClick={() => setShowFullImage(false)}
+                  >
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-4 right-4 text-white hover:bg-white/20"
+                      onClick={() => setShowFullImage(false)}
+                    >
+                      <X className="h-6 w-6" />
+                    </Button>
+                    <img
+                      src={post.imageUrl || "/placeholder.svg"}
+                      alt="Post image full view"
+                      className="max-w-full max-h-full object-contain"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -547,12 +600,46 @@ export function PostCard({
       </div>
 
       <div className="space-y-3">
-        <p className="text-base leading-relaxed whitespace-pre-wrap">{post.content}</p>
+        <p className="text-base leading-relaxed whitespace-pre-wrap">{renderTextWithHashtags(post.content)}</p>
 
         {post.imageUrl && (
-          <div className="rounded-lg overflow-hidden border">
-            <img src={post.imageUrl || "/placeholder.svg"} alt="Post image" className="w-full max-h-96 object-cover" />
-          </div>
+          <>
+            <div
+              className="rounded-lg overflow-hidden border cursor-pointer hover:opacity-95 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowFullImage(true)
+              }}
+            >
+              <img
+                src={post.imageUrl || "/placeholder.svg"}
+                alt="Post image"
+                className="w-full max-h-96 object-cover"
+              />
+            </div>
+
+            {showFullImage && (
+              <div
+                className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+                onClick={() => setShowFullImage(false)}
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-4 right-4 text-white hover:bg-white/20"
+                  onClick={() => setShowFullImage(false)}
+                >
+                  <X className="h-6 w-6" />
+                </Button>
+                <img
+                  src={post.imageUrl || "/placeholder.svg"}
+                  alt="Post image full view"
+                  className="max-w-full max-h-full object-contain"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
 
