@@ -1,11 +1,14 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect, useRef } from "react"
 import { PostCard } from "@/components/post-card"
 import { CreatePostForm } from "@/components/create-post-form"
 import { Button } from "@/components/ui/button"
-import { Loader2, RefreshCw } from "lucide-react"
-import { getPosts, type Post } from "@/lib/firestore"
+import { Input } from "@/components/ui/input"
+import { Loader2, RefreshCw, Search, X } from "lucide-react"
+import { getPosts, searchPosts, type Post } from "@/lib/firestore"
 import { useAuth } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
 
@@ -21,6 +24,8 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
   const [lastDoc, setLastDoc] = useState<any>(null)
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [isSearching, setIsSearching] = useState(false)
   const { user } = useAuth()
   const router = useRouter()
   const postRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
@@ -33,7 +38,9 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
         setLoading(true)
       }
 
-      const result = await getPosts(20, loadMore ? lastDoc : undefined)
+      const result = searchTerm.trim()
+        ? await searchPosts(searchTerm, 20)
+        : await getPosts(20, loadMore ? lastDoc : undefined)
 
       if (loadMore) {
         setPosts((prev) => [...prev, ...result.posts])
@@ -49,6 +56,7 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
       setLoading(false)
       setLoadingMore(false)
       setRefreshing(false)
+      setIsSearching(false)
     }
   }
 
@@ -58,12 +66,10 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
 
   useEffect(() => {
     if (highlightPostId && posts.length > 0 && postRefs.current[highlightPostId]) {
-      // Wait a bit for rendering to complete
       setTimeout(() => {
         const element = postRefs.current[highlightPostId]
         if (element) {
           element.scrollIntoView({ behavior: "smooth", block: "center" })
-          // Clear highlight after scrolling
           if (onPostHighlighted) {
             setTimeout(() => onPostHighlighted(), 2000)
           }
@@ -74,6 +80,20 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
 
   const handleRefresh = () => {
     setRefreshing(true)
+    setLastDoc(null)
+    loadPosts()
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSearching(true)
+    setLastDoc(null)
+    loadPosts()
+  }
+
+  const handleClearSearch = () => {
+    setSearchTerm("")
+    setIsSearching(true)
     setLastDoc(null)
     loadPosts()
   }
@@ -117,12 +137,50 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
         </Button>
       </div>
 
+      <form onSubmit={handleSearch} className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Search posts or hashtags (e.g., #coding)..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10 pr-10"
+        />
+        {searchTerm && (
+          <button
+            type="button"
+            onClick={handleClearSearch}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </form>
+
+      {searchTerm && (
+        <div className="text-sm text-muted-foreground">
+          {isSearching ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Searching...
+            </span>
+          ) : (
+            <span>
+              Showing results for: <span className="font-semibold text-foreground">{searchTerm}</span>
+              {posts.length === 0 && " (no results found)"}
+            </span>
+          )}
+        </div>
+      )}
+
       {user && <CreatePostForm onPostCreated={handlePostCreated} />}
 
       <div className="space-y-6">
         {posts.length === 0 ? (
           <div className="text-center py-12 bg-card rounded-xl border">
-            <p className="text-muted-foreground text-lg">No posts yet. Be the first to post!</p>
+            <p className="text-muted-foreground text-lg">
+              {searchTerm ? "No posts found matching your search." : "No posts yet. Be the first to post!"}
+            </p>
           </div>
         ) : (
           <>
@@ -143,7 +201,7 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
               </div>
             ))}
 
-            {hasMore && (
+            {hasMore && !searchTerm && (
               <div className="flex justify-center pt-4">
                 <Button variant="outline" onClick={() => loadPosts(true)} disabled={loadingMore} className="gap-2">
                   {loadingMore ? (
