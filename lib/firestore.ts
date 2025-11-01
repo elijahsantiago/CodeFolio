@@ -1363,10 +1363,15 @@ export async function getPostsByUser(
   hasMore: boolean
 }> {
   if (!isFirebaseConfigured()) {
+    console.warn("[v0] Firebase not configured, cannot fetch posts")
     return { posts: [], lastDoc: null, hasMore: false }
   }
 
   if (!db) {
+    console.error("[v0] Firestore database is not initialized. Cannot fetch posts.")
+    console.error("[v0] This is likely due to the Firebase Firestore compatibility issue in v0.")
+    console.error("[v0] Your posts exist in the database but cannot be accessed in the v0 preview.")
+    console.error("[v0] Solution: Deploy your app outside v0 (to Vercel) where Firestore will work correctly.")
     return { posts: [], lastDoc: null, hasMore: false }
   }
 

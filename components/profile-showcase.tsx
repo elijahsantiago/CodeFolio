@@ -95,12 +95,6 @@ export function ProfileShowcase({
   const [showResumeModal, setShowResumeModal] = useState(false)
   const router = useRouter()
 
-  useEffect(() => {
-    console.log("[v0] ProfileShowcase received posts:", posts.length, "posts")
-    console.log("[v0] ProfileShowcase postsLoading:", postsLoading)
-    console.log("[v0] ProfileShowcase posts data:", posts)
-  }, [posts, postsLoading])
-
   const computedTextColor = textColor || getContrastTextColor(backgroundColor)
 
   const getTypeIcon = (type: string) => {
@@ -562,7 +556,6 @@ export function ProfileShowcase({
           {activeTab === "posts" && (
             <div className="bg-card/50 backdrop-blur-sm rounded-2xl border shadow-lg p-8">
               <h3 className="text-2xl font-bold mb-6">Recent Posts</h3>
-              {console.log("[v0] Rendering Posts tab, posts.length:", posts.length, "postsLoading:", postsLoading)}
               {postsLoading ? (
                 <div className="text-center py-12">
                   <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
