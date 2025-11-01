@@ -199,7 +199,7 @@ export function ShowcaseEditor({
     try {
       let processedFile: string
 
-      if (file.type.startsWith("image/")) {
+      if (file.type.startsWith("image/") || file.type === "image/gif") {
         // Determine compression settings based on use case
         const compressionOptions = {
           profile: { maxWidth: 400, maxHeight: 400, quality: 0.8, maxSizeKB: 200 },
@@ -208,7 +208,7 @@ export function ShowcaseEditor({
           resume: { maxWidth: 800, maxHeight: 600, quality: 0.8, maxSizeKB: 400 },
           banner: { maxWidth: 1200, maxHeight: 300, quality: 0.7, maxSizeKB: 500 },
         }
-
+        // Pass GIF support to processImageUpload if needed, assuming it handles it
         processedFile = await processImageUpload(file, compressionOptions[type])
       } else {
         // For non-image files (like PDFs), convert to base64 but check size
@@ -517,7 +517,7 @@ export function ShowcaseEditor({
                             <div className="flex items-center gap-2">
                               <Input
                                 type="file"
-                                accept="image/*"
+                                accept="image/*,.gif"
                                 onChange={(e) => {
                                   const file = e.target.files?.[0]
                                   if (file) {
@@ -554,7 +554,8 @@ export function ShowcaseEditor({
 
                             <Input name="profilePicture" placeholder="Or describe your ideal profile picture" />
                             <p className="text-xs text-muted-foreground">
-                              Images are automatically compressed to 400x400px and under 200KB for optimal performance
+                              Images are automatically compressed to 400x400px and under 200KB for optimal performance.
+                              GIFs preserve animation.
                             </p>
                           </div>
                         </div>
@@ -625,7 +626,7 @@ export function ShowcaseEditor({
                                     <div className="flex items-center gap-2">
                                       <Input
                                         type="file"
-                                        accept={newItemType === "image" ? "image/*" : "video/*"}
+                                        accept={newItemType === "image" ? "image/*,.gif" : "video/*"}
                                         onChange={(e) => {
                                           const file = e.target.files?.[0]
                                           if (file) {
@@ -668,7 +669,8 @@ export function ShowcaseEditor({
                                       placeholder={`Describe the ${newItemType} for placeholder generation`}
                                     />
                                     <p className="text-xs text-muted-foreground">
-                                      Images are automatically compressed to 800x600px and under 400KB
+                                      Images are automatically compressed to 800x600px and under 400KB. GIFs preserve
+                                      animation.
                                     </p>
                                   </div>
                                 )}
@@ -842,7 +844,7 @@ export function ShowcaseEditor({
                             <div className="flex items-center gap-2">
                               <Input
                                 type="file"
-                                accept="image/*"
+                                accept="image/*,.gif"
                                 onChange={(e) => {
                                   const file = e.target.files?.[0]
                                   if (file) {
@@ -895,7 +897,8 @@ export function ShowcaseEditor({
                               </Button>
                             )}
                             <p className="text-xs text-muted-foreground">
-                              Images are automatically compressed to 1920x1080px and under 500KB
+                              Images are automatically compressed to 1920x1080px and under 500KB. GIFs preserve
+                              animation.
                             </p>
                           </div>
                         </div>
@@ -910,7 +913,7 @@ export function ShowcaseEditor({
                             <div className="flex items-center gap-2">
                               <Input
                                 type="file"
-                                accept="image/*"
+                                accept="image/*,.gif"
                                 onChange={(e) => {
                                   const file = e.target.files?.[0]
                                   if (file) {
@@ -964,7 +967,7 @@ export function ShowcaseEditor({
                             )}
                             <p className="text-xs text-muted-foreground">
                               Banner images are displayed at the top of your profile info box. Recommended size:
-                              1200x300px
+                              1200x300px. GIFs supported.
                             </p>
                           </div>
                         </div>
@@ -1296,7 +1299,7 @@ export function ShowcaseEditor({
                     <div className="flex items-center gap-2">
                       <Input
                         type="file"
-                        accept={editingItemType === "image" ? "image/*" : "video/*"}
+                        accept={editingItemType === "image" ? "image/*,.gif" : "video/*"}
                         onChange={(e) => {
                           const file = e.target.files?.[0]
                           if (file) {
@@ -1336,7 +1339,7 @@ export function ShowcaseEditor({
                       defaultValue={editingItem.type !== "text" ? editingItem.content : ""}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Images are automatically compressed to 800x600px and under 400KB
+                      Images are automatically compressed to 800x600px and under 400KB. GIFs preserve animation.
                     </p>
                   </div>
                 )}

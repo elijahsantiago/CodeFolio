@@ -12,6 +12,7 @@ import { Edit, Eye, LogOut, Loader2, Menu, Home, Rss, Search } from "lucide-reac
 import { useAuth } from "@/hooks/use-auth"
 import { useProfile } from "@/hooks/use-profile"
 import { NotificationsPanel } from "@/components/notifications-panel"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -378,6 +379,119 @@ export default function HomePage() {
           </div>
         </div>
 
+        <div
+          className="mb-8 flex md:hidden items-center justify-between sticky top-4 z-40 backdrop-blur-md py-3 px-4 rounded-2xl border-2 shadow-lg"
+          style={{
+            backgroundColor: `${backgroundColor}ee`,
+            color: textColor,
+            borderColor: isDark(backgroundColor) ? "#ffffff40" : "#00000020",
+          }}
+        >
+          <Sheet open={isEditing} onOpenChange={setIsEditing}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm" className="rounded-xl shadow-sm bg-transparent" style={buttonStyle}>
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="left"
+              className="w-[280px]"
+              style={{
+                backgroundColor,
+                color: textColor,
+                borderColor: isDark(backgroundColor) ? "#ffffff40" : "#00000020",
+              }}
+            >
+              <SheetHeader>
+                <SheetTitle style={{ color: textColor }}>Menu</SheetTitle>
+              </SheetHeader>
+              <div className="flex flex-col gap-3 mt-6">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    setShowFeed(false)
+                    setShowSearch(false)
+                    setIsEditing(false)
+                  }}
+                  className="w-full justify-start font-semibold rounded-xl shadow-sm"
+                  style={!showSearch && !showFeed ? activeButtonStyle : buttonStyle}
+                >
+                  My Profile
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    setShowFeed(true)
+                    setShowSearch(false)
+                    setIsEditing(false)
+                  }}
+                  className="w-full justify-start font-semibold rounded-xl shadow-sm"
+                  style={showFeed ? activeButtonStyle : buttonStyle}
+                >
+                  Live Feed
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    setShowSearch(true)
+                    setShowFeed(false)
+                    setIsEditing(false)
+                  }}
+                  className="w-full justify-start font-semibold rounded-xl shadow-sm"
+                  style={showSearch ? activeButtonStyle : buttonStyle}
+                >
+                  Discover Profiles
+                </Button>
+
+                {!showSearch && !showFeed && (
+                  <Button
+                    onClick={() => setIsEditing(!isEditing)}
+                    variant="outline"
+                    size="lg"
+                    className="w-full justify-start gap-2 font-semibold rounded-xl shadow-sm"
+                    style={isEditing ? activeButtonStyle : buttonStyle}
+                  >
+                    {isEditing ? (
+                      <>
+                        <Eye className="h-5 w-5" />
+                        Preview
+                      </>
+                    ) : (
+                      <>
+                        <Edit className="h-5 w-5" />
+                        Edit Profile
+                      </>
+                    )}
+                  </Button>
+                )}
+
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    handleLogout()
+                    setIsEditing(false)
+                  }}
+                  className="w-full justify-start gap-2 rounded-xl shadow-sm font-semibold"
+                  style={buttonStyle}
+                >
+                  <LogOut className="h-5 w-5" />
+                  Logout
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          <div className="flex items-center gap-2">
+            <NotificationsPanel buttonStyle={buttonStyle} />
+          </div>
+        </div>
+
         {showFeed ? (
           <LiveFeed highlightPostId={highlightPostId} onPostHighlighted={() => setHighlightPostId(null)} />
         ) : showSearch ? (
@@ -394,10 +508,6 @@ export default function HomePage() {
                 profilePicture={profileData.profilePicture}
                 profileName={profileData.profileName}
                 profileDescription={profileData.profileDescription}
-                onProfileChange={(data) => {
-                  setProfileData(data)
-                  handleProfileUpdate(data)
-                }}
                 layout={currentLayout}
                 onLayoutChange={(layout) => {
                   setCurrentLayout(layout)

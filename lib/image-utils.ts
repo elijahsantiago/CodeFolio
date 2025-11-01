@@ -10,6 +10,31 @@ export interface ImageCompressionOptions {
 export async function compressImage(file: File, options: ImageCompressionOptions = {}): Promise<string> {
   const { maxWidth = 800, maxHeight = 600, quality = 0.9, maxSizeKB = 500 } = options
 
+  if (file.type === "image/gif") {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const result = e.target?.result as string
+        // Calculate base64 size in KB
+        const sizeKB = (result.length * 0.75) / 1024
+
+        // Firestore has a 1MB document limit. Base64 GIFs should be max 200KB to leave room for other fields
+        if (sizeKB > 200) {
+          reject(
+            new Error(
+              `GIF is too large (${Math.round(sizeKB)}KB). Please use a GIF smaller than 200KB to fit within Firestore limits.`,
+            ),
+          )
+        } else {
+          console.log(`[v0] GIF loaded: ~${Math.round(sizeKB)}KB (animation preserved)`)
+          resolve(result)
+        }
+      }
+      reader.onerror = () => reject(new Error("Failed to load GIF"))
+      reader.readAsDataURL(file)
+    })
+  }
+
   return new Promise((resolve, reject) => {
     const canvas = document.createElement("canvas")
     const ctx = canvas.getContext("2d")
@@ -58,15 +83,16 @@ export async function compressImage(file: File, options: ImageCompressionOptions
 }
 
 export function validateImageFile(file: File): { valid: boolean; error?: string } {
-  // Check file type
   if (!file.type.startsWith("image/")) {
     return { valid: false, error: "File must be an image" }
   }
 
-  // Check file size (10MB limit before compression)
-  const maxSizeMB = 10
+  const maxSizeMB = file.type === "image/gif" ? 0.15 : 10 // 150KB for GIFs, 10MB for other images
   if (file.size > maxSizeMB * 1024 * 1024) {
-    return { valid: false, error: `Image must be smaller than ${maxSizeMB}MB` }
+    return {
+      valid: false,
+      error: `${file.type === "image/gif" ? "GIF" : "Image"} must be smaller than ${file.type === "image/gif" ? "150KB" : "10MB"}`,
+    }
   }
 
   return { valid: true }
@@ -83,11 +109,12 @@ export async function processImageUpload(file: File, options: ImageCompressionOp
   try {
     const compressedImage = await compressImage(file, options)
 
-    // Final size check for Firestore
     const finalSizeKB = (compressedImage.length * 0.75) / 1024
-    if (finalSizeKB > 800) {
-      // Leave some buffer for other document data
-      throw new Error(`Compressed image is still too large (${Math.round(finalSizeKB)}KB). Please use a smaller image.`)
+    const maxSize = file.type === "image/gif" ? 200 : 800 // 200KB for GIFs, 800KB for other images
+    if (finalSizeKB > maxSize) {
+      throw new Error(
+        `${file.type === "image/gif" ? "GIF" : "Compressed image"} is still too large (${Math.round(finalSizeKB)}KB). Please use a smaller ${file.type === "image/gif" ? "GIF (max 150KB)" : "image"}.`,
+      )
     }
 
     return compressedImage

@@ -39,6 +39,7 @@ export default function ProfileViewPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [postsLoading, setPostsLoading] = useState(false)
   const isAdmin = user?.email === "e.santiago.e1@gmail.com" || user?.email === "gabeasosa@gmail.com"
+  const fromFeed = searchParams.get("from") === "feed" // Extract fromFeed from query parameters
 
   useEffect(() => {
     setFirebaseAvailable(isFirebaseConfigured())
@@ -205,8 +206,6 @@ export default function ProfileViewPage() {
       }
     }
   }
-
-  const fromFeed = searchParams.get("from") === "feed"
 
   if (!firebaseAvailable) {
     return (
