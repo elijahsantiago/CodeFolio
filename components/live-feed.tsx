@@ -7,7 +7,7 @@ import { PostCard } from "@/components/post-card"
 import { CreatePostForm } from "@/components/create-post-form"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, RefreshCw, Search, X } from "lucide-react"
+import { Loader2, RefreshCw, Search, X, Plus, Minus } from "lucide-react"
 import { getPosts, searchPosts, type Post } from "@/lib/firestore"
 import { useAuth } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
@@ -26,6 +26,7 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
   const [loadingMore, setLoadingMore] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [isSearching, setIsSearching] = useState(false)
+  const [showCreatePost, setShowCreatePost] = useState(false)
   const { user } = useAuth()
   const router = useRouter()
   const postRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
@@ -99,6 +100,7 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
   }
 
   const handlePostCreated = () => {
+    setShowCreatePost(false)
     handleRefresh()
   }
 
@@ -173,7 +175,27 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
         </div>
       )}
 
-      {user && <CreatePostForm onPostCreated={handlePostCreated} />}
+      {user && showCreatePost && (
+        <div className="animate-in slide-in-from-top-4 duration-300">
+          <CreatePostForm onPostCreated={handlePostCreated} />
+        </div>
+      )}
+
+      {user && (
+        <button
+          onClick={() => setShowCreatePost(!showCreatePost)}
+          className="fixed bottom-8 right-8 z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 flex items-center justify-center group"
+          aria-label={showCreatePost ? "Close post creation" : "Create new post"}
+        >
+          {showCreatePost ? (
+            <Minus className="h-6 w-6 transition-transform group-hover:rotate-90" />
+          ) : (
+            <Plus className="h-6 w-6 transition-transform group-hover:rotate-90" />
+          )}
+        </button>
+      )}
+
+      {user && !showCreatePost && <CreatePostForm onPostCreated={handlePostCreated} />}
 
       <div className="space-y-6">
         {posts.length === 0 ? (
