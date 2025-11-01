@@ -24,6 +24,21 @@ interface Friend {
   lastSeen?: string
 }
 
+interface Post {
+  id: string
+  userId: string
+  content: string
+  imageUrl?: string
+  createdAt: Date
+  likes: string[]
+  commentCount: number
+  userProfile?: {
+    profileName: string
+    profilePicture?: string
+  }
+  hashtags?: string[]
+}
+
 interface ProfileShowcaseProps {
   items: ShowcaseItem[]
   profilePicture?: string
@@ -43,7 +58,10 @@ interface ProfileShowcaseProps {
   isViewOnly?: boolean
   onViewConnections?: () => void
   userEmail?: string
-  onDeleteItem?: (itemId: string) => void // Added onDeleteItem prop
+  onDeleteItem?: (itemId: string) => void
+  posts?: Post[]
+  postsLoading?: boolean
+  currentUserId?: string
 }
 
 export function ProfileShowcase({
@@ -65,11 +83,14 @@ export function ProfileShowcase({
   isViewOnly = false,
   onViewConnections,
   userEmail = "",
-  onDeleteItem, // Added onDeleteItem prop
+  onDeleteItem,
+  posts = [],
+  postsLoading = false,
+  currentUserId,
 }: ProfileShowcaseProps) {
   const [focusedItem, setFocusedItem] = useState<ShowcaseItem | null>(null)
   const [showConnections, setShowConnections] = useState(false)
-  const [activeTab, setActiveTab] = useState<"showcase" | "resume">("showcase")
+  const [activeTab, setActiveTab] = useState<"showcase" | "posts" | "resume">("showcase")
   const [showResumeModal, setShowResumeModal] = useState(false)
   const router = useRouter()
 
@@ -493,6 +514,16 @@ export function ProfileShowcase({
                 Portfolio Showcase
               </button>
               <button
+                onClick={() => setActiveTab("posts")}
+                className={`px-8 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                  activeTab === "posts"
+                    ? "bg-primary text-primary-foreground shadow-md scale-105"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                }`}
+              >
+                Posts
+              </button>
+              <button
                 onClick={() => setActiveTab("resume")}
                 className={`px-8 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
                   activeTab === "resume"
@@ -519,6 +550,33 @@ export function ProfileShowcase({
 
           {activeTab === "showcase" && (
             <div className={getLayoutClasses()}>{items.map((item, index) => renderShowcaseItem(item, index))}</div>
+          )}
+
+          {activeTab === "posts" && (
+            <div className="bg-card/50 backdrop-blur-sm rounded-2xl border shadow-lg p-8">
+              <h3 className="text-2xl font-bold mb-6">Recent Posts</h3>
+              {postsLoading ? (
+                <div className="text-center py-12">
+                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
+                  <p className="text-sm text-muted-foreground mt-4">Loading posts...</p>
+                </div>
+              ) : posts.length > 0 ? (
+                <div className="space-y-4">
+                  {posts.map((post) => {
+                    const PostCard = require("@/components/post-card").PostCard
+                    return <PostCard key={post.id} post={post} currentUserId={currentUserId} isClickable={true} />
+                  })}
+                </div>
+              ) : (
+                <div className="bg-background rounded-xl border p-16 text-center">
+                  <div className="text-muted-foreground">
+                    <Type className="h-16 w-16 mx-auto mb-4 opacity-40" />
+                    <p className="text-lg font-medium mb-2">No posts yet</p>
+                    <p className="text-sm">This user hasn't posted anything to the live feed yet.</p>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {activeTab === "resume" && (

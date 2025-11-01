@@ -5,7 +5,6 @@ import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Loader2, AlertCircle, UserPlus, UserCheck } from "lucide-react"
 import { ProfileShowcase } from "@/components/profile-showcase"
-import { PostCard } from "@/components/post-card"
 import {
   getUserProfile,
   sendConnectionRequest,
@@ -354,20 +353,10 @@ export default function ProfileViewPage() {
           isViewOnly={true}
           userEmail={user?.email || ""}
           onDeleteItem={canDelete ? handleDeleteShowcaseItem : undefined}
+          posts={posts}
+          postsLoading={postsLoading}
+          currentUserId={user?.uid}
         />
-
-        {posts.length > 0 && (
-          <div className="mt-8">
-            <h2 className="text-xl font-bold mb-4" style={{ color: profile.textColor || "#000000" }}>
-              Recent Posts
-            </h2>
-            <div className="space-y-4">
-              {posts.map((post) => (
-                <PostCard key={post.id} post={post} currentUserId={user?.uid} isClickable={true} />
-              ))}
-            </div>
-          </div>
-        )}
 
         {postsLoading && (
           <div className="mt-8 text-center">
