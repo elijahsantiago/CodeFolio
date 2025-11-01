@@ -266,24 +266,34 @@ export default function ProfileViewPage() {
   return (
     <div className="min-h-screen" style={pageBackgroundStyle}>
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
           <Button
             onClick={() => router.push(fromFeed ? "/?view=feed" : "/?discover=true")}
             variant="outline"
             size="sm"
-            className="gap-2"
+            className="gap-2 w-full sm:w-auto"
           >
             <ArrowLeft className="h-4 w-4" />
-            {fromFeed ? "Back to Live Feed" : "Back to Discover"}
+            {fromFeed ? "Back to Feed" : "Back to Discover"}
           </Button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-end">
             {canDelete && (
               <>
-                <Button onClick={handleResetConnections} variant="outline" size="sm" className="gap-2 bg-transparent">
+                <Button
+                  onClick={handleResetConnections}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 bg-transparent text-xs sm:text-sm"
+                >
                   Reset Connections
                 </Button>
-                <Button onClick={handleDeleteProfile} variant="destructive" size="sm" className="gap-2">
+                <Button
+                  onClick={handleDeleteProfile}
+                  variant="destructive"
+                  size="sm"
+                  className="gap-2 text-xs sm:text-sm"
+                >
                   Delete Profile
                 </Button>
               </>
@@ -295,24 +305,24 @@ export default function ProfileViewPage() {
                 disabled={connectLoading}
                 variant={isConnected ? "outline" : "default"}
                 size="sm"
-                className="gap-2"
+                className="gap-2 text-xs sm:text-sm"
               >
                 {connectLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : isConnected ? (
                   <>
                     <UserCheck className="h-4 w-4" />
-                    Connected
+                    <span className="hidden sm:inline">Connected</span>
                   </>
                 ) : requestSent ? (
                   <>
                     <UserPlus className="h-4 w-4" />
-                    Request Sent
+                    <span className="hidden sm:inline">Request Sent</span>
                   </>
                 ) : (
                   <>
                     <UserPlus className="h-4 w-4" />
-                    Send Request
+                    <span className="hidden sm:inline">Send Request</span>
                   </>
                 )}
               </Button>
@@ -321,7 +331,7 @@ export default function ProfileViewPage() {
         </div>
 
         <div className="mb-4">
-          <h1 className="text-2xl font-bold" style={{ color: profile.textColor || "#000000" }}>
+          <h1 className="text-xl sm:text-2xl font-bold break-words" style={{ color: profile.textColor || "#000000" }}>
             {profile.profileName}'s Portfolio
           </h1>
         </div>

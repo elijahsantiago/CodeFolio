@@ -367,12 +367,14 @@ export function PostCard({
                                 <div className="bg-muted/70 rounded-lg p-2.5">
                                   <div className="flex items-center gap-2 mb-1">
                                     <p
-                                      className="font-semibold text-xs cursor-pointer hover:underline"
+                                      className="font-semibold text-xs sm:text-sm cursor-pointer hover:underline"
                                       onClick={() => navigateToProfile(reply.userId)}
                                     >
                                       {reply.userName}
                                     </p>
-                                    <p className="text-xs text-muted-foreground">{formatTimestamp(reply.createdAt)}</p>
+                                    <p className="text-xs sm:text-sm text-muted-foreground">
+                                      {formatTimestamp(reply.createdAt)}
+                                    </p>
                                     {canDeleteReply && (
                                       <Button
                                         variant="ghost"
@@ -391,7 +393,7 @@ export function PostCard({
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleReply(comment.id, reply.userName)}
-                                    className="mt-1 h-6 text-xs gap-1"
+                                    className="mt-1 h-6 text-xs sm:text-sm gap-1"
                                   >
                                     <Reply className="h-3 w-3" />
                                     Reply
@@ -416,7 +418,7 @@ export function PostCard({
                   <span className="text-muted-foreground">
                     Replying to <span className="font-semibold">{getParentComment(replyingTo)?.userName}</span>
                   </span>
-                  <Button variant="ghost" size="sm" onClick={handleCancelReply} className="h-6 text-xs">
+                  <Button variant="ghost" size="sm" onClick={handleCancelReply} className="h-6 text-xs sm:text-sm">
                     Cancel
                   </Button>
                 </div>
@@ -425,7 +427,7 @@ export function PostCard({
                 <img
                   src={profile.profilePicture || "/placeholder.svg?height=32&width=32&query=profile avatar"}
                   alt="Your avatar"
-                  className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover flex-shrink-0"
                 />
                 <div className="flex-1 flex gap-2">
                   <Textarea
@@ -526,28 +528,28 @@ export function PostCard({
 
   if (commentsLayout === "side") {
     return (
-      <div className="flex gap-6 items-start">
-        {/* Post Card - centered and fixed width */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        {/* Post Card - centered and responsive width */}
         <Card
-          className={`flex-shrink-0 w-full max-w-2xl p-6 space-y-4 ${isClickable ? "cursor-pointer hover:shadow-lg transition-shadow" : ""}`}
+          className={`flex-shrink-0 w-full lg:max-w-2xl p-4 sm:p-6 space-y-4 ${isClickable ? "cursor-pointer hover:shadow-lg transition-shadow" : ""}`}
           onClick={handleCardClick}
         >
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <img
                 src={post.userPicture || "/placeholder.svg?height=40&width=40&query=profile avatar"}
                 alt={post.userName}
-                className="w-10 h-10 rounded-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
                 onClick={() => navigateToProfile(post.userId)}
               />
-              <div>
+              <div className="min-w-0">
                 <p
-                  className="font-semibold cursor-pointer hover:underline"
+                  className="font-semibold cursor-pointer hover:underline text-sm sm:text-base truncate"
                   onClick={() => navigateToProfile(post.userId)}
                 >
                   {post.userName}
                 </p>
-                <p className="text-sm text-muted-foreground">{formatTimestamp(post.createdAt)}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">{formatTimestamp(post.createdAt)}</p>
               </div>
             </div>
 
@@ -557,7 +559,7 @@ export function PostCard({
                 size="sm"
                 onClick={handleDelete}
                 disabled={deleting}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -565,7 +567,9 @@ export function PostCard({
           </div>
 
           <div className="space-y-3">
-            <p className="text-base leading-relaxed whitespace-pre-wrap">{renderTextWithHashtags(post.content)}</p>
+            <p className="text-sm sm:text-base leading-relaxed whitespace-pre-wrap break-words">
+              {renderTextWithHashtags(post.content)}
+            </p>
 
             {post.imageUrl && (
               <>
@@ -579,7 +583,7 @@ export function PostCard({
                   <img
                     src={post.imageUrl || "/placeholder.svg"}
                     alt="Post image"
-                    className="w-full max-h-[600px] object-contain bg-muted"
+                    className="w-full max-h-[400px] sm:max-h-[600px] object-contain bg-muted"
                   />
                 </div>
 
@@ -608,34 +612,34 @@ export function PostCard({
             )}
           </div>
 
-          <div className="flex items-center gap-6 pt-2 border-t">
+          <div className="flex items-center gap-4 sm:gap-6 pt-2 border-t">
             <Button
               variant="ghost"
               size="sm"
               onClick={handleLike}
               disabled={!currentUserId}
-              className={`gap-2 ${isLiked ? "text-red-500 hover:text-red-600" : ""}`}
+              className={`gap-1 sm:gap-2 ${isLiked ? "text-red-500 hover:text-red-600" : ""}`}
             >
               <Heart className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
-              <span>{likeCount}</span>
+              <span className="text-sm">{likeCount}</span>
             </Button>
 
-            <Button variant="ghost" size="sm" onClick={handleToggleComments} className="gap-2">
+            <Button variant="ghost" size="sm" onClick={handleToggleComments} className="gap-1 sm:gap-2">
               <MessageCircle className="h-4 w-4" />
-              <span>{commentCount}</span>
+              <span className="text-sm">{commentCount}</span>
             </Button>
 
-            <div className="flex items-center gap-2 text-muted-foreground text-sm ml-auto">
+            <div className="flex items-center gap-1 sm:gap-2 text-muted-foreground text-sm ml-auto">
               <Eye className="h-4 w-4" />
               <span>{post.viewCount || 0}</span>
             </div>
           </div>
         </Card>
 
-        {/* Comments Panel - to the right */}
+        {/* Comments Panel - stacks below on mobile, side on desktop */}
         {showComments && (
-          <Card className="flex-1 min-w-[400px] max-w-xl p-6">
-            <h3 className="font-semibold text-lg mb-4">Comments ({commentCount})</h3>
+          <Card className="w-full lg:flex-1 lg:min-w-[400px] lg:max-w-xl p-4 sm:p-6">
+            <h3 className="font-semibold text-base sm:text-lg mb-4">Comments ({commentCount})</h3>
             {renderCommentsSection()}
           </Card>
         )}

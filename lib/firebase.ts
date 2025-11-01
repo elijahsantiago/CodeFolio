@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app"
 import { getAuth } from "firebase/auth"
+import { getFirestore } from "firebase/firestore"
 
 const isFirebaseConfigured = () => {
   return !!(
@@ -15,7 +16,6 @@ const isFirebaseConfigured = () => {
 let app: any = null
 let auth: any = null
 let db: any = null
-let firestoreError: string | null = null
 
 if (isFirebaseConfigured()) {
   const firebaseConfig = {
@@ -30,22 +30,11 @@ if (isFirebaseConfigured()) {
   try {
     app = initializeApp(firebaseConfig)
     auth = getAuth(app)
-
-    // Firebase Firestore cannot be initialized in the v0 environment due to module resolution issues
-    // This is a known v0 platform regression that occurred around 2 days ago
-    db = null
-    firestoreError =
-      "Firebase Firestore is incompatible with the v0 preview environment. Deploy to Vercel for full functionality."
-
-    console.warn("[v0] ⚠️  Firebase Firestore is disabled in v0 preview")
-    console.warn("[v0] 📝 Your posts exist in Firebase but cannot be accessed here")
-    console.warn("[v0] ✅ Solution: Deploy your app to Vercel where Firestore works correctly")
-    console.warn("[v0] 🔧 Alternative: Switch to Supabase or Neon (v0-supported databases)")
-    console.warn("[v0] 📞 Report: Contact v0 support at vercel.com/help about this regression")
+    db = getFirestore(app)
   } catch (error) {
-    console.warn("[v0] Firebase initialization failed:", error)
+    console.warn("Firebase initialization failed:", error)
   }
 }
 
-export { auth, db, isFirebaseConfigured, firestoreError }
+export { auth, db, isFirebaseConfigured }
 export default app

@@ -133,14 +133,14 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-3xl font-bold">Live Feed</h2>
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-6">
+        <h2 className="text-2xl sm:text-3xl font-bold">Live Feed</h2>
         <Button
           variant="outline"
           size="sm"
           onClick={handleRefresh}
           disabled={refreshing}
-          className="gap-2 bg-transparent"
+          className="gap-2 bg-transparent w-full sm:w-auto"
         >
           <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
           Refresh
@@ -151,7 +151,7 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="Search posts or hashtags (e.g., #coding)..."
+          placeholder="Search posts or hashtags..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10 pr-10"
@@ -192,13 +192,13 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
       {user && (
         <button
           onClick={() => setShowCreatePost(!showCreatePost)}
-          className="fixed bottom-8 right-8 z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 flex items-center justify-center group"
+          className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-50 h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 flex items-center justify-center group"
           aria-label={showCreatePost ? "Close post creation" : "Create new post"}
         >
           {showCreatePost ? (
-            <Minus className="h-6 w-6 transition-transform group-hover:rotate-90" />
+            <Minus className="h-5 w-5 sm:h-6 sm:w-6 transition-transform group-hover:rotate-90" />
           ) : (
-            <Plus className="h-6 w-6 transition-transform group-hover:rotate-90" />
+            <Plus className="h-5 w-5 sm:h-6 sm:w-6 transition-transform group-hover:rotate-90" />
           )}
         </button>
       )}

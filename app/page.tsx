@@ -247,14 +247,14 @@ export default function HomePage() {
     <div className={`min-h-screen ${currentTheme}`} style={{ backgroundColor }}>
       <main className="container mx-auto px-4 py-8">
         <div
-          className="mb-8 flex items-center justify-between sticky top-4 z-40 backdrop-blur-md py-4 px-8 rounded-2xl border-2 shadow-lg"
+          className="mb-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 sticky top-4 z-40 backdrop-blur-md py-4 px-4 sm:px-8 rounded-2xl border-2 shadow-lg"
           style={{
             backgroundColor: `${backgroundColor}ee`,
             color: textColor,
             borderColor: isDark(backgroundColor) ? "#ffffff40" : "#00000020",
           }}
         >
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 justify-center sm:justify-start">
             <Button
               variant="outline"
               size="lg"
@@ -262,7 +262,7 @@ export default function HomePage() {
                 setShowFeed(false)
                 setShowSearch(false)
               }}
-              className="font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
+              className="font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md text-sm sm:text-base"
               style={!showSearch && !showFeed ? activeButtonStyle : buttonStyle}
             >
               My Profile
@@ -275,7 +275,7 @@ export default function HomePage() {
                 setShowFeed(true)
                 setShowSearch(false)
               }}
-              className="font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
+              className="font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md text-sm sm:text-base"
               style={showFeed ? activeButtonStyle : buttonStyle}
             >
               Live Feed
@@ -288,10 +288,10 @@ export default function HomePage() {
                 setShowSearch(true)
                 setShowFeed(false)
               }}
-              className="font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
+              className="font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md text-sm sm:text-base"
               style={showSearch ? activeButtonStyle : buttonStyle}
             >
-              Discover Profiles
+              Discover
             </Button>
 
             {!showSearch && !showFeed && (
@@ -299,36 +299,36 @@ export default function HomePage() {
                 onClick={() => setIsEditing(!isEditing)}
                 variant="outline"
                 size="lg"
-                className="gap-2 font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md bg-transparent"
+                className="gap-2 font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md bg-transparent text-sm sm:text-base"
                 style={isEditing ? activeButtonStyle : buttonStyle}
               >
                 {isEditing ? (
                   <>
-                    <Eye className="h-5 w-5" />
-                    Preview
+                    <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <span className="hidden sm:inline">Preview</span>
                   </>
                 ) : (
                   <>
-                    <Edit className="h-5 w-5" />
-                    Edit Profile
+                    <Edit className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <span className="hidden sm:inline">Edit</span>
                   </>
                 )}
               </Button>
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 justify-center sm:justify-end">
             <NotificationsPanel buttonStyle={buttonStyle} />
 
             <Button
               variant="outline"
               size="lg"
               onClick={handleLogout}
-              className="gap-2 rounded-xl shadow-sm font-semibold transition-all duration-200 hover:scale-105 hover:shadow-md bg-transparent"
+              className="gap-2 rounded-xl shadow-sm font-semibold transition-all duration-200 hover:scale-105 hover:shadow-md bg-transparent text-sm sm:text-base"
               style={buttonStyle}
             >
-              <LogOut className="h-5 w-5" />
-              Logout
+              <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="hidden sm:inline">Logout</span>
             </Button>
           </div>
         </div>
