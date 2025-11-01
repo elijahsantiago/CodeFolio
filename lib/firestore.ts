@@ -1353,6 +1353,48 @@ export async function getPosts(
   }
 }
 
+// Get posts by a specific user
+export async function getPostsByUser(
+  userId: string,
+  maxResults = 20,
+): Promise<{
+  posts: Post[]
+  lastDoc: any
+  hasMore: boolean
+}> {
+  if (!isFirebaseConfigured()) {
+    return { posts: [], lastDoc: null, hasMore: false }
+  }
+
+  if (!db) {
+    return { posts: [], lastDoc: null, hasMore: false }
+  }
+
+  try {
+    console.log("[v0] Fetching posts for user:", userId)
+    const postsRef = collection(db, "posts")
+    const q = query(postsRef, where("userId", "==", userId), orderBy("createdAt", "desc"), limit(maxResults + 1))
+
+    const querySnapshot = await getDocs(q)
+    const posts: Post[] = []
+
+    const hasMore = querySnapshot.docs.length > maxResults
+    const docsToProcess = hasMore ? querySnapshot.docs.slice(0, maxResults) : querySnapshot.docs
+
+    docsToProcess.forEach((doc) => {
+      posts.push({ id: doc.id, ...doc.data() } as Post)
+    })
+
+    const lastDoc = hasMore ? querySnapshot.docs[maxResults - 1] : null
+
+    console.log("[v0] Found", posts.length, "posts for user")
+    return { posts, lastDoc, hasMore }
+  } catch (error: any) {
+    console.error("[v0] Error getting user posts:", error)
+    return { posts: [], lastDoc: null, hasMore: false }
+  }
+}
+
 export async function toggleLikePost(
   postId: string,
   userId: string,

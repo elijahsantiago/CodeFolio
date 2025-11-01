@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Loader2, AlertCircle, UserPlus, UserCheck } from "lucide-react"
 import { ProfileShowcase } from "@/components/profile-showcase"
+import { PostCard } from "@/components/post-card"
 import {
   getUserProfile,
   sendConnectionRequest,
@@ -14,7 +15,9 @@ import {
   adminDeleteProfile,
   adminDeleteShowcaseItem,
   adminResetConnections,
+  getPostsByUser,
   type UserProfile,
+  type Post,
 } from "@/lib/firestore"
 import { isFirebaseConfigured } from "@/lib/firebase"
 import { useAuth } from "@/hooks/use-auth"
@@ -34,6 +37,8 @@ export default function ProfileViewPage() {
   const [requestSent, setRequestSent] = useState(false)
   const [connectLoading, setConnectLoading] = useState(false)
   const [isOwnProfile, setIsOwnProfile] = useState(false) // Declare isOwnProfile here
+  const [posts, setPosts] = useState<Post[]>([])
+  const [postsLoading, setPostsLoading] = useState(false)
   const isAdmin = user?.email === "e.santiago.e1@gmail.com" || user?.email === "gabeasosa@gmail.com"
 
   useEffect(() => {
@@ -82,6 +87,26 @@ export default function ProfileViewPage() {
       setIsOwnProfile(user.uid === profile.userId)
     }
   }, [currentUserProfile, profile, user])
+
+  useEffect(() => {
+    if (!firebaseAvailable || !params.id) return
+
+    async function loadUserPosts() {
+      try {
+        setPostsLoading(true)
+        console.log("[v0] Loading posts for user:", params.id)
+        const { posts: userPosts } = await getPostsByUser(params.id as string, 10)
+        setPosts(userPosts)
+        console.log("[v0] Loaded", userPosts.length, "posts")
+      } catch (error) {
+        console.error("Error loading user posts:", error)
+      } finally {
+        setPostsLoading(false)
+      }
+    }
+
+    loadUserPosts()
+  }, [firebaseAvailable, params.id])
 
   const handleConnectionToggle = async () => {
     if (!user || !currentUserProfile || !profile) return
@@ -330,6 +355,26 @@ export default function ProfileViewPage() {
           userEmail={user?.email || ""}
           onDeleteItem={canDelete ? handleDeleteShowcaseItem : undefined}
         />
+
+        {posts.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-xl font-bold mb-4" style={{ color: profile.textColor || "#000000" }}>
+              Recent Posts
+            </h2>
+            <div className="space-y-4">
+              {posts.map((post) => (
+                <PostCard key={post.id} post={post} currentUserId={user?.uid} isClickable={true} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {postsLoading && (
+          <div className="mt-8 text-center">
+            <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+            <p className="text-sm text-muted-foreground mt-2">Loading posts...</p>
+          </div>
+        )}
       </div>
     </div>
   )
