@@ -1945,12 +1945,13 @@ export async function searchPosts(
     querySnapshot.forEach((doc) => {
       const post = { id: doc.id, ...doc.data() } as Post
       const contentLower = post.content.toLowerCase()
-      const postHashtags = post.hashtags || []
+
+      const postHashtags = post.hashtags && post.hashtags.length > 0 ? post.hashtags : extractHashtags(post.content)
 
       // Search logic:
       // 1. If searching for a hashtag, match against post hashtags
       // 2. Otherwise, search in post content
-      const matchesHashtag = isHashtagSearch && postHashtags.some((tag) => tag.includes(hashtagToSearch))
+      const matchesHashtag = isHashtagSearch && postHashtags.some((tag) => tag.toLowerCase().includes(hashtagToSearch))
       const matchesContent = !isHashtagSearch && contentLower.includes(searchLower)
 
       if (matchesHashtag || matchesContent) {

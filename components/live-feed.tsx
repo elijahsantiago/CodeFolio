@@ -31,7 +31,7 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
   const router = useRouter()
   const postRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
 
-  const loadPosts = async (loadMore = false) => {
+  const loadPosts = async (loadMore = false, searchQuery?: string) => {
     try {
       if (loadMore) {
         setLoadingMore(true)
@@ -39,10 +39,12 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
         setLoading(true)
       }
 
-      console.log("[v0] Loading posts, searchTerm:", searchTerm.trim())
+      // Use provided searchQuery or fall back to state
+      const queryToUse = searchQuery !== undefined ? searchQuery : searchTerm
+      console.log("[v0] Loading posts, searchTerm:", queryToUse.trim())
 
-      const result = searchTerm.trim()
-        ? await searchPosts(searchTerm, 20)
+      const result = queryToUse.trim()
+        ? await searchPosts(queryToUse, 20)
         : await getPosts(20, loadMore ? lastDoc : undefined)
 
       console.log("[v0] Posts loaded:", result.posts.length)
@@ -102,7 +104,7 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
     setSearchTerm("")
     setIsSearching(true)
     setLastDoc(null)
-    loadPosts()
+    loadPosts(false, "") // Pass empty string directly
   }
 
   const handlePostCreated = () => {
