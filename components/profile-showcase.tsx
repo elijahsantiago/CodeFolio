@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, type KeyboardEvent } from "react"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Play, ImageIcon, Type, Users, Shield } from "lucide-react"
 import { getContrastTextColor } from "@/lib/color-utils"
+import { PostCard } from "@/components/post-card"
 
 interface ShowcaseItem {
   id: string
@@ -562,10 +563,9 @@ export function ProfileShowcase({
                 </div>
               ) : posts.length > 0 ? (
                 <div className="space-y-4">
-                  {posts.map((post) => {
-                    const PostCard = require("@/components/post-card").PostCard
-                    return <PostCard key={post.id} post={post} currentUserId={currentUserId} isClickable={true} />
-                  })}
+                  {posts.map((post) => (
+                    <PostCard key={post.id} post={post} currentUserId={currentUserId} isClickable={true} />
+                  ))}
                 </div>
               ) : (
                 <div className="bg-background rounded-xl border p-16 text-center">
