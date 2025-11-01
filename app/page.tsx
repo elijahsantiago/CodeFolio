@@ -12,7 +12,6 @@ import { Edit, Eye, LogOut, Loader2, Menu, Home, Rss, Search } from "lucide-reac
 import { useAuth } from "@/hooks/use-auth"
 import { useProfile } from "@/hooks/use-profile"
 import { NotificationsPanel } from "@/components/notifications-panel"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false)
