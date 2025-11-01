@@ -34,6 +34,7 @@ interface PostCardProps {
   onPostClick?: () => void
   autoShowComments?: boolean
   commentsLayout?: "below" | "side"
+  compact?: boolean
 }
 
 export function PostCard({
@@ -44,6 +45,7 @@ export function PostCard({
   onPostClick,
   autoShowComments = false,
   commentsLayout = "below",
+  compact = false,
 }: PostCardProps) {
   const [isLiked, setIsLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(post.likeCount || 0)
@@ -256,12 +258,16 @@ export function PostCard({
       target.closest("textarea") ||
       target.closest("input") ||
       target.closest("a") ||
-      !isClickable ||
-      !onPostClick
+      !isClickable
     ) {
       return
     }
-    onPostClick()
+
+    if (compact) {
+      router.push(`/post/${post.id}`)
+    } else if (onPostClick) {
+      onPostClick()
+    }
   }
 
   const renderTextWithHashtags = (text: string) => {
@@ -445,6 +451,78 @@ export function PostCard({
       )}
     </div>
   )
+
+  if (compact) {
+    return (
+      <Card
+        className="overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-300 hover:-translate-y-1 h-full flex flex-col"
+        onClick={handleCardClick}
+      >
+        {post.imageUrl && (
+          <div className="relative h-48 overflow-hidden bg-muted">
+            <img src={post.imageUrl || "/placeholder.svg"} alt="Post image" className="w-full h-full object-cover" />
+            {canDeletePost && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDelete()
+                }}
+                disabled={deleting}
+                className="absolute top-2 right-2 opacity-0 hover:opacity-100 transition-opacity"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        )}
+
+        <div className="p-4 flex-1 flex flex-col">
+          <div className="flex items-center gap-2 mb-3">
+            <img
+              src={post.userPicture || "/placeholder.svg?height=32&width=32&query=profile avatar"}
+              alt={post.userName}
+              className="w-8 h-8 rounded-full object-cover"
+              onClick={(e) => {
+                e.stopPropagation()
+                navigateToProfile(post.userId)
+              }}
+            />
+            <div className="flex-1 min-w-0">
+              <p
+                className="font-semibold text-sm truncate cursor-pointer hover:underline"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  navigateToProfile(post.userId)
+                }}
+              >
+                {post.userName}
+              </p>
+              <p className="text-xs text-muted-foreground">{formatTimestamp(post.createdAt)}</p>
+            </div>
+          </div>
+
+          <p className="text-sm leading-relaxed line-clamp-3 mb-3 flex-1">{renderTextWithHashtags(post.content)}</p>
+
+          <div className="flex items-center gap-4 pt-3 border-t text-sm">
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <Heart className={`h-4 w-4 ${isLiked ? "fill-red-500 text-red-500" : ""}`} />
+              <span>{likeCount}</span>
+            </div>
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <MessageCircle className="h-4 w-4" />
+              <span>{commentCount}</span>
+            </div>
+            <div className="flex items-center gap-1 text-muted-foreground ml-auto">
+              <Eye className="h-4 w-4" />
+              <span>{post.viewCount || 0}</span>
+            </div>
+          </div>
+        </div>
+      </Card>
+    )
+  }
 
   if (commentsLayout === "side") {
     return (

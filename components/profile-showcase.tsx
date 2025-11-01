@@ -562,9 +562,11 @@ export function ProfileShowcase({
                   <p className="text-sm text-muted-foreground mt-4">Loading posts...</p>
                 </div>
               ) : posts.length > 0 ? (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {posts.map((post) => (
-                    <PostCard key={post.id} post={post} currentUserId={currentUserId} isClickable={true} />
+                    <div key={post.id} className="h-full">
+                      <PostCard post={post} currentUserId={currentUserId} isClickable={true} compact={true} />
+                    </div>
                   ))}
                 </div>
               ) : (
