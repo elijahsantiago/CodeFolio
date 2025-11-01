@@ -39,9 +39,13 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
         setLoading(true)
       }
 
+      console.log("[v0] Loading posts, searchTerm:", searchTerm.trim())
+
       const result = searchTerm.trim()
         ? await searchPosts(searchTerm, 20)
         : await getPosts(20, loadMore ? lastDoc : undefined)
+
+      console.log("[v0] Posts loaded:", result.posts.length)
 
       if (loadMore) {
         setPosts((prev) => [...prev, ...result.posts])
@@ -87,12 +91,14 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
+    console.log("[v0] Search submitted with term:", searchTerm)
     setIsSearching(true)
     setLastDoc(null)
     loadPosts()
   }
 
   const handleClearSearch = () => {
+    console.log("[v0] Clearing search")
     setSearchTerm("")
     setIsSearching(true)
     setLastDoc(null)
@@ -194,8 +200,6 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
           )}
         </button>
       )}
-
-      {user && !showCreatePost && <CreatePostForm onPostCreated={handlePostCreated} />}
 
       <div className="space-y-6">
         {posts.length === 0 ? (
