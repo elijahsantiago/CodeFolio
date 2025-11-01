@@ -99,7 +99,7 @@ export default function PostPage() {
 
   return (
     <div className={`min-h-screen ${currentTheme}`} style={{ backgroundColor }}>
-      <div className="max-w-3xl mx-auto p-6 space-y-6">
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
         <Button variant="ghost" onClick={handleBackToFeed} className="gap-2" style={buttonStyle}>
           <ArrowLeft className="h-4 w-4" />
           Back to Feed
@@ -110,7 +110,8 @@ export default function PostPage() {
           currentUserId={user?.uid}
           onPostDeleted={handlePostDeleted}
           isClickable={false}
-          showFullImage={true}
+          autoShowComments={true}
+          commentsLayout="side"
         />
       </div>
     </div>

@@ -7,13 +7,15 @@ import { ShowcaseEditor } from "@/components/showcase-editor"
 import { ProfileSearch } from "@/components/profile-search"
 import { LiveFeed } from "@/components/live-feed"
 import { Button } from "@/components/ui/button"
-import { Edit, Eye, LogOut, Loader2, Menu } from "lucide-react"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Edit, Eye, LogOut, Loader2, Menu, Home, Rss, Search } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useProfile } from "@/hooks/use-profile"
 import { NotificationsPanel } from "@/components/notifications-panel"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 
 export default function HomePage() {
+  const [menuOpen, setMenuOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [showFeed, setShowFeed] = useState(false)
@@ -248,89 +250,132 @@ export default function HomePage() {
     <div className={`min-h-screen ${currentTheme}`} style={{ backgroundColor }}>
       <main className="container mx-auto px-4 py-8">
         <div
-          className="mb-8 hidden md:flex items-center justify-between sticky top-4 z-40 backdrop-blur-md py-4 px-8 rounded-2xl border-2 shadow-lg"
+          className="mb-8 flex items-center justify-between gap-4 sticky top-4 z-40 backdrop-blur-md py-4 px-4 sm:px-8 rounded-2xl border-2 shadow-lg"
           style={{
             backgroundColor: `${backgroundColor}ee`,
             color: textColor,
             borderColor: isDark(backgroundColor) ? "#ffffff40" : "#00000020",
           }}
         >
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => {
-                setShowFeed(false)
-                setShowSearch(false)
-              }}
-              className="font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
-              style={!showSearch && !showFeed ? activeButtonStyle : buttonStyle}
-            >
-              My Profile
-            </Button>
-
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => {
-                setShowFeed(true)
-                setShowSearch(false)
-              }}
-              className="font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
-              style={showFeed ? activeButtonStyle : buttonStyle}
-            >
-              Live Feed
-            </Button>
-
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => {
-                setShowSearch(true)
-                setShowFeed(false)
-              }}
-              className="font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
-              style={showSearch ? activeButtonStyle : buttonStyle}
-            >
-              Discover Profiles
-            </Button>
-
-            {!showSearch && !showFeed && (
+          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+            <SheetTrigger asChild>
               <Button
-                onClick={() => setIsEditing(!isEditing)}
                 variant="outline"
                 size="lg"
                 className="gap-2 font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md bg-transparent"
-                style={isEditing ? activeButtonStyle : buttonStyle}
+                style={buttonStyle}
               >
-                {isEditing ? (
-                  <>
-                    <Eye className="h-5 w-5" />
-                    Preview
-                  </>
-                ) : (
-                  <>
-                    <Edit className="h-5 w-5" />
-                    Edit Profile
-                  </>
-                )}
+                <Menu className="h-5 w-5" />
+                <span className="hidden sm:inline">Menu</span>
               </Button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3">
-            <NotificationsPanel buttonStyle={buttonStyle} />
-
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={handleLogout}
-              className="gap-2 rounded-xl shadow-sm font-semibold transition-all duration-200 hover:scale-105 hover:shadow-md bg-transparent"
-              style={buttonStyle}
+            </SheetTrigger>
+            <SheetContent
+              side="left"
+              className="w-[280px] sm:w-[320px]"
+              style={{
+                backgroundColor: backgroundColor,
+                color: textColor,
+                borderColor: isDark(backgroundColor) ? "#ffffff40" : "#00000020",
+              }}
             >
-              <LogOut className="h-5 w-5" />
-              Logout
-            </Button>
+              <SheetHeader>
+                <SheetTitle style={{ color: textColor }}>Navigation</SheetTitle>
+              </SheetHeader>
+              <div className="flex flex-col gap-3 mt-6">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    setShowFeed(false)
+                    setShowSearch(false)
+                    setMenuOpen(false)
+                  }}
+                  className="w-full justify-start gap-3 font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
+                  style={!showSearch && !showFeed ? activeButtonStyle : buttonStyle}
+                >
+                  <Home className="h-5 w-5" />
+                  My Profile
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    setShowFeed(true)
+                    setShowSearch(false)
+                    setMenuOpen(false)
+                  }}
+                  className="w-full justify-start gap-3 font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
+                  style={showFeed ? activeButtonStyle : buttonStyle}
+                >
+                  <Rss className="h-5 w-5" />
+                  Live Feed
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    setShowSearch(true)
+                    setShowFeed(false)
+                    setMenuOpen(false)
+                  }}
+                  className="w-full justify-start gap-3 font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
+                  style={showSearch ? activeButtonStyle : buttonStyle}
+                >
+                  <Search className="h-5 w-5" />
+                  Discover Profiles
+                </Button>
+
+                {!showSearch && !showFeed && (
+                  <Button
+                    onClick={() => {
+                      setIsEditing(!isEditing)
+                      setMenuOpen(false)
+                    }}
+                    variant="outline"
+                    size="lg"
+                    className="w-full justify-start gap-3 font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
+                    style={isEditing ? activeButtonStyle : buttonStyle}
+                  >
+                    {isEditing ? (
+                      <>
+                        <Eye className="h-5 w-5" />
+                        Preview Mode
+                      </>
+                    ) : (
+                      <>
+                        <Edit className="h-5 w-5" />
+                        Edit Profile
+                      </>
+                    )}
+                  </Button>
+                )}
+
+                <div
+                  className="border-t my-2"
+                  style={{ borderColor: isDark(backgroundColor) ? "#ffffff20" : "#00000020" }}
+                />
+
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    handleLogout()
+                    setMenuOpen(false)
+                  }}
+                  className="w-full justify-start gap-3 rounded-xl shadow-sm font-semibold transition-all duration-200 hover:scale-105 hover:shadow-md"
+                  style={buttonStyle}
+                >
+                  <LogOut className="h-5 w-5" />
+                  Logout
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          <div className="flex items-center gap-2">
+            <NotificationsPanel buttonStyle={buttonStyle} />
           </div>
         </div>
 

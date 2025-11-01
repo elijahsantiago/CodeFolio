@@ -113,6 +113,51 @@ export interface ConnectionRequest {
   respondedAt?: number
 }
 
+export interface Notification {
+  id: string
+  type: "comment_reply" | "connection_request" | "post_like" // Added post_like type
+  fromUserId: string
+  fromUserName: string
+  fromUserPicture: string
+  toUserId: string
+  postId?: string // For comment replies and post likes
+  commentId?: string // For comment replies
+  commentContent?: string // Preview of the reply
+  read: boolean
+  createdAt: number
+}
+
+export interface Post {
+  id: string
+  userId: string
+  userName: string
+  userPicture: string
+  content: string
+  imageUrl?: string
+  hashtags: string[] // Array of hashtags without the # symbol
+  likes: string[] // Array of user IDs who liked
+  likeCount: number
+  commentCount: number
+  viewCount: number
+  createdAt: Timestamp
+  updatedAt: Timestamp
+}
+
+export interface Comment {
+  id: string
+  postId: string
+  userId: string
+  userName: string
+  userPicture: string
+  content: string
+  parentCommentId?: string // Added parentCommentId field
+  createdAt: Timestamp
+}
+
+export interface PostWithComments extends Post {
+  comments: Comment[]
+}
+
 export interface ProfileCard {
   id: string
   userId: string
@@ -1273,6 +1318,15 @@ export async function removeConnection(currentUserId: string, targetUserId: stri
   }
 }
 
+function extractHashtags(text: string): string[] {
+  const hashtagRegex = /#(\w+)/g
+  const matches = text.match(hashtagRegex)
+  if (!matches) return []
+
+  // Remove # symbol and convert to lowercase for case-insensitive search
+  return [...new Set(matches.map((tag) => tag.slice(1).toLowerCase()))]
+}
+
 export async function createPost(
   userId: string,
   userName: string,
@@ -1297,12 +1351,15 @@ export async function createPost(
     const postsRef = collection(db, "posts")
     const newPostRef = doc(postsRef)
 
+    const hashtags = extractHashtags(content)
+
     const newPost: Omit<Post, "id"> = {
       userId,
       userName,
       userPicture,
       content: content.trim(),
       imageUrl: imageUrl || undefined,
+      hashtags, // Store extracted hashtags
       likes: [],
       likeCount: 0,
       commentCount: 0,
@@ -1361,6 +1418,48 @@ export async function getPosts(
     return { posts, lastDoc, hasMore }
   } catch (error: any) {
     console.error("[v0] Error getting posts:", error)
+    return { posts: [], lastDoc: null, hasMore: false }
+  }
+}
+
+// Get posts by a specific user
+export async function getPostsByUser(
+  userId: string,
+  maxResults = 20,
+): Promise<{
+  posts: Post[]
+  lastDoc: any
+  hasMore: boolean
+}> {
+  if (!isFirebaseConfigured()) {
+    return { posts: [], lastDoc: null, hasMore: false }
+  }
+
+  if (!db) {
+    return { posts: [], lastDoc: null, hasMore: false }
+  }
+
+  try {
+    console.log("[v0] Fetching posts for user:", userId)
+    const postsRef = collection(db, "posts")
+    const q = query(postsRef, where("userId", "==", userId), orderBy("createdAt", "desc"), limit(maxResults + 1))
+
+    const querySnapshot = await getDocs(q)
+    const posts: Post[] = []
+
+    const hasMore = querySnapshot.docs.length > maxResults
+    const docsToProcess = hasMore ? querySnapshot.docs.slice(0, maxResults) : querySnapshot.docs
+
+    docsToProcess.forEach((doc) => {
+      posts.push({ id: doc.id, ...doc.data() } as Post)
+    })
+
+    const lastDoc = hasMore ? querySnapshot.docs[maxResults - 1] : null
+
+    console.log("[v0] Found", posts.length, "posts for user")
+    return { posts, lastDoc, hasMore }
+  } catch (error: any) {
+    console.error("[v0] Error getting user posts:", error)
     return { posts: [], lastDoc: null, hasMore: false }
   }
 }
@@ -1915,5 +2014,72 @@ export async function deleteNotification(notificationId: string): Promise<void> 
     console.log("[v0] Notification deleted successfully:", notificationId)
   } catch (error: any) {
     console.error("[v0] Error deleting notification:", error)
+  }
+}
+
+export async function searchPosts(
+  searchTerm: string,
+  maxResults = 20,
+): Promise<{
+  posts: Post[]
+  lastDoc: any
+  hasMore: boolean
+}> {
+  if (!isFirebaseConfigured()) {
+    return { posts: [], lastDoc: null, hasMore: false }
+  }
+
+  if (!db) {
+    return { posts: [], lastDoc: null, hasMore: false }
+  }
+
+  if (!searchTerm.trim()) {
+    // If no search term, return regular posts
+    return getPosts(maxResults)
+  }
+
+  try {
+    console.log("[v0] Searching posts for:", searchTerm)
+    const postsRef = collection(db, "posts")
+    const searchLower = searchTerm.toLowerCase().trim()
+
+    // Check if search term is a hashtag
+    const isHashtagSearch = searchLower.startsWith("#")
+    const hashtagToSearch = isHashtagSearch ? searchLower.slice(1) : searchLower
+
+    // Fetch all posts (we'll filter client-side for better search results)
+    // In production, you'd want to use a proper search service like Algolia
+    const q = query(postsRef, orderBy("createdAt", "desc"), limit(100))
+    const querySnapshot = await getDocs(q)
+    const posts: Post[] = []
+
+    querySnapshot.forEach((doc) => {
+      const post = { id: doc.id, ...doc.data() } as Post
+      const contentLower = post.content.toLowerCase()
+
+      const postHashtags = post.hashtags && post.hashtags.length > 0 ? post.hashtags : extractHashtags(post.content)
+
+      // Search logic:
+      // 1. If searching for a hashtag, match against post hashtags
+      // 2. Otherwise, search in post content
+      const matchesHashtag = isHashtagSearch && postHashtags.some((tag) => tag.toLowerCase().includes(hashtagToSearch))
+      const matchesContent = !isHashtagSearch && contentLower.includes(searchLower)
+
+      if (matchesHashtag || matchesContent) {
+        posts.push(post)
+      }
+    })
+
+    console.log("[v0] Found", posts.length, "matching posts")
+
+    // Return first maxResults posts
+    const hasMore = posts.length > maxResults
+    const postsToReturn = posts.slice(0, maxResults)
+    const lastDoc = hasMore ? querySnapshot.docs[maxResults - 1] : null
+
+    return { posts: postsToReturn, lastDoc, hasMore: false } // Disable pagination for search
+  } catch (error: any) {
+    console.error("[v0] Error searching posts:", error)
+    return { posts: [], lastDoc: null, hasMore: false }
   }
 }

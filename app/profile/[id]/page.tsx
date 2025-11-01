@@ -14,7 +14,9 @@ import {
   adminDeleteProfile,
   adminDeleteShowcaseItem,
   adminResetConnections,
+  getPostsByUser,
   type UserProfile,
+  type Post,
 } from "@/lib/firestore"
 import { isFirebaseConfigured } from "@/lib/firebase"
 import { useAuth } from "@/hooks/use-auth"
@@ -34,6 +36,8 @@ export default function ProfileViewPage() {
   const [requestSent, setRequestSent] = useState(false)
   const [connectLoading, setConnectLoading] = useState(false)
   const [isOwnProfile, setIsOwnProfile] = useState(false) // Declare isOwnProfile here
+  const [posts, setPosts] = useState<Post[]>([])
+  const [postsLoading, setPostsLoading] = useState(false)
   const isAdmin = user?.email === "e.santiago.e1@gmail.com" || user?.email === "gabeasosa@gmail.com"
   const fromFeed = searchParams.get("from") === "feed" // Extract fromFeed from query parameters
 
@@ -83,6 +87,26 @@ export default function ProfileViewPage() {
       setIsOwnProfile(user.uid === profile.userId)
     }
   }, [currentUserProfile, profile, user])
+
+  useEffect(() => {
+    if (!firebaseAvailable || !params.id) return
+
+    async function loadUserPosts() {
+      try {
+        setPostsLoading(true)
+        console.log("[v0] Loading posts for user:", params.id)
+        const { posts: userPosts } = await getPostsByUser(params.id as string, 10)
+        setPosts(userPosts)
+        console.log("[v0] Loaded", userPosts.length, "posts")
+      } catch (error) {
+        console.error("Error loading user posts:", error)
+      } finally {
+        setPostsLoading(false)
+      }
+    }
+
+    loadUserPosts()
+  }, [firebaseAvailable, params.id])
 
   const handleConnectionToggle = async () => {
     if (!user || !currentUserProfile || !profile) return
@@ -241,24 +265,34 @@ export default function ProfileViewPage() {
   return (
     <div className="min-h-screen" style={pageBackgroundStyle}>
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
           <Button
             onClick={() => router.push(fromFeed ? "/?view=feed" : "/?discover=true")}
             variant="outline"
             size="sm"
-            className="gap-2"
+            className="gap-2 w-full sm:w-auto"
           >
             <ArrowLeft className="h-4 w-4" />
-            {fromFeed ? "Back to Live Feed" : "Back to Discover"}
+            {fromFeed ? "Back to Feed" : "Back to Discover"}
           </Button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-end">
             {canDelete && (
               <>
-                <Button onClick={handleResetConnections} variant="outline" size="sm" className="gap-2 bg-transparent">
+                <Button
+                  onClick={handleResetConnections}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 bg-transparent text-xs sm:text-sm"
+                >
                   Reset Connections
                 </Button>
-                <Button onClick={handleDeleteProfile} variant="destructive" size="sm" className="gap-2">
+                <Button
+                  onClick={handleDeleteProfile}
+                  variant="destructive"
+                  size="sm"
+                  className="gap-2 text-xs sm:text-sm"
+                >
                   Delete Profile
                 </Button>
               </>
@@ -270,24 +304,24 @@ export default function ProfileViewPage() {
                 disabled={connectLoading}
                 variant={isConnected ? "outline" : "default"}
                 size="sm"
-                className="gap-2"
+                className="gap-2 text-xs sm:text-sm"
               >
                 {connectLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : isConnected ? (
                   <>
                     <UserCheck className="h-4 w-4" />
-                    Connected
+                    <span className="hidden sm:inline">Connected</span>
                   </>
                 ) : requestSent ? (
                   <>
                     <UserPlus className="h-4 w-4" />
-                    Request Sent
+                    <span className="hidden sm:inline">Request Sent</span>
                   </>
                 ) : (
                   <>
                     <UserPlus className="h-4 w-4" />
-                    Send Request
+                    <span className="hidden sm:inline">Send Request</span>
                   </>
                 )}
               </Button>
@@ -296,7 +330,7 @@ export default function ProfileViewPage() {
         </div>
 
         <div className="mb-4">
-          <h1 className="text-2xl font-bold" style={{ color: profile.textColor || "#000000" }}>
+          <h1 className="text-xl sm:text-2xl font-bold break-words" style={{ color: profile.textColor || "#000000" }}>
             {profile.profileName}'s Portfolio
           </h1>
         </div>
@@ -328,7 +362,17 @@ export default function ProfileViewPage() {
           isViewOnly={true}
           userEmail={user?.email || ""}
           onDeleteItem={canDelete ? handleDeleteShowcaseItem : undefined}
+          posts={posts}
+          postsLoading={postsLoading}
+          currentUserId={user?.uid}
         />
+
+        {postsLoading && (
+          <div className="mt-8 text-center">
+            <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+            <p className="text-sm text-muted-foreground mt-2">Loading posts...</p>
+          </div>
+        )}
       </div>
     </div>
   )
