@@ -25,9 +25,11 @@ import { useRouter } from "next/navigation"
 
 interface NotificationsPanelProps {
   buttonStyle?: React.CSSProperties
+  inMenu?: boolean
+  onClose?: () => void
 }
 
-export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
+export function NotificationsPanel({ buttonStyle, inMenu = false, onClose }: NotificationsPanelProps) {
   const { user } = useAuth()
   const { profile, updateProfile } = useProfile()
   const router = useRouter()
@@ -102,6 +104,7 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
       // Navigate to the post
       if (notification.postId) {
         setIsOpen(false)
+        if (onClose) onClose()
         router.push(`/post/${notification.postId}`)
       }
 
@@ -152,8 +155,131 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
     }
   }
 
+  if (inMenu) {
+    return (
+      <div className="w-full">
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full justify-start gap-3 font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md relative"
+          style={buttonStyle}
+        >
+          <Bell className="h-5 w-5" />
+          Notifications
+          {totalCount > 0 && (
+            <Badge
+              variant="destructive"
+              className="ml-auto h-5 min-w-[20px] flex items-center justify-center px-1.5 text-xs"
+            >
+              {totalCount}
+            </Badge>
+          )}
+        </Button>
+
+        {isOpen && (
+          <div className="mt-2 rounded-lg border bg-card">
+            <div className="p-3 border-b">
+              <h4 className="font-semibold text-sm">Notifications</h4>
+            </div>
+            <div className="max-h-[300px] overflow-y-auto p-2">
+              {requests.length === 0 && notifications.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No notifications</p>
+              ) : (
+                <div className="space-y-2">
+                  {/* Connection Requests */}
+                  {requests.map((request) => (
+                    <div key={request.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                      <Avatar className="h-8 w-8 shrink-0">
+                        <AvatarImage src={request.fromUserPicture || "/placeholder.svg"} alt={request.fromUserName} />
+                        <AvatarFallback>
+                          <User className="h-4 w-4" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{request.fromUserName}</p>
+                        <p className="text-xs text-muted-foreground">wants to connect</p>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => handleResponse(request, true)}
+                          disabled={loading === request.id}
+                          className="h-7 w-7 p-0"
+                        >
+                          <Check className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleResponse(request, false)}
+                          disabled={loading === request.id}
+                          className="h-7 w-7 p-0"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Comment Reply and Like Notifications */}
+                  {notifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-muted/70 transition-colors ${
+                        notification.read ? "bg-muted/30" : "bg-muted/50"
+                      }`}
+                      onClick={() => handleNotificationClick(notification)}
+                    >
+                      <Avatar className="h-8 w-8 shrink-0">
+                        <AvatarImage
+                          src={notification.fromUserPicture || "/placeholder.svg"}
+                          alt={notification.fromUserName}
+                        />
+                        <AvatarFallback>
+                          <User className="h-4 w-4" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1">
+                          {notification.type === "post_like" ? (
+                            <Heart className="h-3 w-3 text-red-500 shrink-0" />
+                          ) : (
+                            <MessageCircle className="h-3 w-3 text-muted-foreground shrink-0" />
+                          )}
+                          <p className="text-xs font-medium truncate">{notification.fromUserName}</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {notification.type === "post_like" ? "liked your post" : "replied to your comment"}
+                        </p>
+                        {notification.commentContent && (
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                            "{notification.commentContent}"
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => handleDeleteNotification(notification.id, e)}
+                        className="h-7 w-7 p-0 shrink-0"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen} modal={false}>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="icon" className="relative bg-transparent" style={buttonStyle}>
           <Bell className="h-5 w-5" />
@@ -170,9 +296,9 @@ export function NotificationsPanel({ buttonStyle }: NotificationsPanelProps) {
       <DropdownMenuContent
         align="end"
         side="bottom"
-        avoidCollisions={false}
-        className="w-96 p-0 min-h-[100px] z-[9999]"
+        className="w-96 p-0 min-h-[100px]"
         sideOffset={8}
+        style={{ zIndex: 50 }}
       >
         <div className="p-4 border-b">
           <h3 className="font-semibold text-base">Notifications</h3>

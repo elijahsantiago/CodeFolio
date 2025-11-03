@@ -356,6 +356,10 @@ export default function HomePage() {
                   style={{ borderColor: isDark(backgroundColor) ? "#ffffff20" : "#00000020" }}
                 />
 
+                <div className="md:hidden">
+                  <NotificationsPanel buttonStyle={buttonStyle} inMenu={true} onClose={() => setMenuOpen(false)} />
+                </div>
+
                 <Button
                   variant="outline"
                   size="lg"
@@ -373,120 +377,7 @@ export default function HomePage() {
             </SheetContent>
           </Sheet>
 
-          <div className="flex items-center gap-2">
-            <NotificationsPanel buttonStyle={buttonStyle} />
-          </div>
-        </div>
-
-        <div
-          className="mb-8 flex md:hidden items-center justify-between sticky top-4 z-40 backdrop-blur-md py-3 px-4 rounded-2xl border-2 shadow-lg"
-          style={{
-            backgroundColor: `${backgroundColor}ee`,
-            color: textColor,
-            borderColor: isDark(backgroundColor) ? "#ffffff40" : "#00000020",
-          }}
-        >
-          <Sheet open={isEditing} onOpenChange={setIsEditing}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="sm" className="rounded-xl shadow-sm bg-transparent" style={buttonStyle}>
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="left"
-              className="w-[280px]"
-              style={{
-                backgroundColor,
-                color: textColor,
-                borderColor: isDark(backgroundColor) ? "#ffffff40" : "#00000020",
-              }}
-            >
-              <SheetHeader>
-                <SheetTitle style={{ color: textColor }}>Menu</SheetTitle>
-              </SheetHeader>
-              <div className="flex flex-col gap-3 mt-6">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => {
-                    setShowFeed(false)
-                    setShowSearch(false)
-                    setIsEditing(false)
-                  }}
-                  className="w-full justify-start font-semibold rounded-xl shadow-sm"
-                  style={!showSearch && !showFeed ? activeButtonStyle : buttonStyle}
-                >
-                  My Profile
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => {
-                    setShowFeed(true)
-                    setShowSearch(false)
-                    setIsEditing(false)
-                  }}
-                  className="w-full justify-start font-semibold rounded-xl shadow-sm"
-                  style={showFeed ? activeButtonStyle : buttonStyle}
-                >
-                  Live Feed
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => {
-                    setShowSearch(true)
-                    setShowFeed(false)
-                    setIsEditing(false)
-                  }}
-                  className="w-full justify-start font-semibold rounded-xl shadow-sm"
-                  style={showSearch ? activeButtonStyle : buttonStyle}
-                >
-                  Discover Profiles
-                </Button>
-
-                {!showSearch && !showFeed && (
-                  <Button
-                    onClick={() => setIsEditing(!isEditing)}
-                    variant="outline"
-                    size="lg"
-                    className="w-full justify-start gap-2 font-semibold rounded-xl shadow-sm"
-                    style={isEditing ? activeButtonStyle : buttonStyle}
-                  >
-                    {isEditing ? (
-                      <>
-                        <Eye className="h-5 w-5" />
-                        Preview
-                      </>
-                    ) : (
-                      <>
-                        <Edit className="h-5 w-5" />
-                        Edit Profile
-                      </>
-                    )}
-                  </Button>
-                )}
-
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => {
-                    handleLogout()
-                    setIsEditing(false)
-                  }}
-                  className="w-full justify-start gap-2 rounded-xl shadow-sm font-semibold"
-                  style={buttonStyle}
-                >
-                  <LogOut className="h-5 w-5" />
-                  Logout
-                </Button>
-              </div>
-            </SheetContent>
-          </Sheet>
-
-          <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2">
             <NotificationsPanel buttonStyle={buttonStyle} />
           </div>
         </div>

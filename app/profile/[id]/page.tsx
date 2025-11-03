@@ -263,37 +263,39 @@ export default function ProfileViewPage() {
   }
 
   return (
-    <div className="min-h-screen" style={pageBackgroundStyle}>
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+    <div className="min-h-screen overflow-x-hidden" style={pageBackgroundStyle}>
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-full">
+        <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-4">
           <Button
             onClick={() => router.push(fromFeed ? "/?view=feed" : "/?discover=true")}
             variant="outline"
             size="sm"
-            className="gap-2 w-full sm:w-auto"
+            className="gap-1 sm:gap-2 w-full sm:w-auto text-xs sm:text-sm px-2 sm:px-4"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4" />
             {fromFeed ? "Back to Feed" : "Back to Discover"}
           </Button>
 
-          <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-end">
+          <div className="flex flex-wrap items-center gap-1 sm:gap-2 justify-center sm:justify-end">
             {canDelete && (
               <>
                 <Button
                   onClick={handleResetConnections}
                   variant="outline"
                   size="sm"
-                  className="gap-2 bg-transparent text-xs sm:text-sm"
+                  className="gap-1 sm:gap-2 bg-transparent text-xs px-2 sm:px-3"
                 >
-                  Reset Connections
+                  <span className="hidden sm:inline">Reset Connections</span>
+                  <span className="sm:hidden">Reset</span>
                 </Button>
                 <Button
                   onClick={handleDeleteProfile}
                   variant="destructive"
                   size="sm"
-                  className="gap-2 text-xs sm:text-sm"
+                  className="gap-1 sm:gap-2 text-xs px-2 sm:px-3"
                 >
-                  Delete Profile
+                  <span className="hidden sm:inline">Delete Profile</span>
+                  <span className="sm:hidden">Delete</span>
                 </Button>
               </>
             )}
@@ -304,24 +306,26 @@ export default function ProfileViewPage() {
                 disabled={connectLoading}
                 variant={isConnected ? "outline" : "default"}
                 size="sm"
-                className="gap-2 text-xs sm:text-sm"
+                className="gap-1 sm:gap-2 text-xs px-2 sm:px-3"
               >
                 {connectLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                 ) : isConnected ? (
                   <>
-                    <UserCheck className="h-4 w-4" />
+                    <UserCheck className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span className="hidden sm:inline">Connected</span>
                   </>
                 ) : requestSent ? (
                   <>
-                    <UserPlus className="h-4 w-4" />
+                    <UserPlus className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span className="hidden sm:inline">Request Sent</span>
+                    <span className="sm:hidden">Sent</span>
                   </>
                 ) : (
                   <>
-                    <UserPlus className="h-4 w-4" />
+                    <UserPlus className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span className="hidden sm:inline">Send Request</span>
+                    <span className="sm:hidden">Connect</span>
                   </>
                 )}
               </Button>
@@ -329,8 +333,11 @@ export default function ProfileViewPage() {
           </div>
         </div>
 
-        <div className="mb-4">
-          <h1 className="text-xl sm:text-2xl font-bold break-words" style={{ color: profile.textColor || "#000000" }}>
+        <div className="mb-2 sm:mb-4">
+          <h1
+            className="text-lg sm:text-xl md:text-2xl font-bold break-words px-2 sm:px-0"
+            style={{ color: profile.textColor || "#000000" }}
+          >
             {profile.profileName}'s Portfolio
           </h1>
         </div>

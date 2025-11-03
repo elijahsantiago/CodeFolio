@@ -196,7 +196,7 @@ export function ProfileShowcase({
         onClick={() => {
           setShowConnections(true)
         }}
-        className="gap-2 hover:scale-105 transition-all duration-200 shadow-sm hover:shadow-md font-semibold"
+        className="gap-1 sm:gap-2 hover:scale-105 transition-all duration-200 shadow-sm hover:shadow-md font-semibold text-xs sm:text-sm px-2 sm:px-3"
         style={{
           backgroundColor:
             getContrastTextColor(profileInfoColor) === "#ffffff" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)",
@@ -205,8 +205,9 @@ export function ProfileShowcase({
             getContrastTextColor(profileInfoColor) === "#ffffff" ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)",
         }}
       >
-        <Users className="h-4 w-4" />
-        <span>{friends.length} Connections</span>
+        <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+        <span className="hidden sm:inline">{friends.length} Connections</span>
+        <span className="sm:hidden">{friends.length}</span>
       </Button>
     )
 
@@ -288,7 +289,7 @@ export function ProfileShowcase({
         return (
           <div className="rounded-lg border-2 overflow-hidden relative" style={profileBoxStyle}>
             {bannerImage && (
-              <div className="h-32 w-full relative">
+              <div className="h-24 sm:h-32 w-full relative">
                 <img
                   src={bannerImage || "/placeholder.svg"}
                   alt="Profile Banner"
@@ -297,10 +298,12 @@ export function ProfileShowcase({
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20" />
               </div>
             )}
-            <div className="flex items-start justify-between gap-4 p-4 relative">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <h1 className="text-3xl font-bold">{profileName || "Profile Showcase"}</h1>
+            <div className="flex items-start justify-between gap-2 sm:gap-4 p-3 sm:p-4 relative">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold break-words">
+                    {profileName || "Profile Showcase"}
+                  </h1>
                   {isAdmin && (
                     <div className="relative">
                       <style jsx>{`
@@ -318,23 +321,23 @@ export function ProfileShowcase({
                           animation: rainbow-border 3s linear infinite;
                         }
                       `}</style>
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background/90 backdrop-blur-sm rounded-lg border-2 rainbow-outline shadow-lg">
-                        <Shield className="h-4 w-4 text-foreground" />
-                        <span className="text-xs font-bold text-foreground tracking-wide">ADMIN</span>
+                      <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-background/90 backdrop-blur-sm rounded-lg border-2 rainbow-outline shadow-lg">
+                        <Shield className="h-3 w-3 sm:h-4 sm:w-4 text-foreground" />
+                        <span className="text-[10px] sm:text-xs font-bold text-foreground tracking-wide">ADMIN</span>
                       </div>
                     </div>
                   )}
                 </div>
-                <p className="leading-relaxed">
+                <p className="leading-relaxed text-sm sm:text-base break-words">
                   {profileDescription || "Welcome to my profile! Check out my showcase below."}
                 </p>
-                {connectionsButton && <div className="mt-3">{connectionsButton}</div>}
+                {connectionsButton && <div className="mt-2 sm:mt-3">{connectionsButton}</div>}
               </div>
               <div className="flex-shrink-0">
                 <img
                   src={profilePicture || "/placeholder.svg?height=120&width=120&query=professional profile avatar"}
                   alt="Profile Picture"
-                  className="w-24 h-24 rounded-full object-cover border-2"
+                  className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full object-cover border-2"
                   style={{ borderColor: contentBoxTrimColor }}
                 />
               </div>
@@ -504,25 +507,26 @@ export function ProfileShowcase({
 
   return (
     <>
-      <div className="space-y-8" style={backgroundStyle}>
-        <div className="p-6 rounded-lg">
+      <div className="space-y-4 sm:space-y-8 overflow-x-hidden" style={backgroundStyle}>
+        <div className="p-3 sm:p-6 rounded-lg">
           {getProfileLayout()}
 
-          <div className="mt-8 mb-6 flex items-center justify-between">
-            <div className="flex gap-2 bg-card/50 backdrop-blur-sm p-1.5 rounded-xl border shadow-sm">
+          <div className="mt-4 sm:mt-8 mb-4 sm:mb-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+            <div className="flex gap-1 bg-card/50 backdrop-blur-sm p-1 sm:p-1.5 rounded-xl border shadow-sm overflow-x-auto">
               <button
                 onClick={() => setActiveTab("showcase")}
-                className={`px-8 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                className={`px-3 sm:px-6 md:px-8 py-2 sm:py-3 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap ${
                   activeTab === "showcase"
                     ? "bg-primary text-primary-foreground shadow-md scale-105"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 }`}
               >
-                Portfolio Showcase
+                <span className="hidden sm:inline">Portfolio Showcase</span>
+                <span className="sm:hidden">Portfolio</span>
               </button>
               <button
                 onClick={() => setActiveTab("posts")}
-                className={`px-8 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                className={`px-3 sm:px-6 md:px-8 py-2 sm:py-3 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap ${
                   activeTab === "posts"
                     ? "bg-primary text-primary-foreground shadow-md scale-105"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -532,7 +536,7 @@ export function ProfileShowcase({
               </button>
               <button
                 onClick={() => setActiveTab("resume")}
-                className={`px-8 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                className={`px-3 sm:px-6 md:px-8 py-2 sm:py-3 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap ${
                   activeTab === "resume"
                     ? "bg-primary text-primary-foreground shadow-md scale-105"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -547,9 +551,9 @@ export function ProfileShowcase({
                 onClick={() => setShowResumeModal(true)}
                 variant="outline"
                 size="sm"
-                className="gap-2 bg-card/50 backdrop-blur-sm hover:bg-card border shadow-sm"
+                className="gap-1 sm:gap-2 bg-card/50 backdrop-blur-sm hover:bg-card border shadow-sm text-xs sm:text-sm px-2 sm:px-3 w-full sm:w-auto"
               >
-                <ImageIcon className="h-4 w-4" />
+                <ImageIcon className="h-3 w-3 sm:h-4 sm:w-4" />
                 View Resume
               </Button>
             )}
@@ -560,8 +564,8 @@ export function ProfileShowcase({
           )}
 
           {activeTab === "posts" && (
-            <div className="bg-card/50 backdrop-blur-sm rounded-2xl border shadow-lg p-8">
-              <h3 className="text-2xl font-bold mb-6">Recent Posts</h3>
+            <div className="bg-card/50 backdrop-blur-sm rounded-2xl border shadow-lg p-4 sm:p-8">
+              <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Recent Posts</h3>
               {console.log("[v0] Rendering Posts tab, posts.length:", posts.length, "postsLoading:", postsLoading)}
               {postsLoading ? (
                 <div className="text-center py-12">
@@ -589,12 +593,17 @@ export function ProfileShowcase({
           )}
 
           {activeTab === "resume" && (
-            <div className="bg-card/50 backdrop-blur-sm rounded-2xl border shadow-lg p-8">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold">Professional Resume</h3>
+            <div className="bg-card/50 backdrop-blur-sm rounded-2xl border shadow-lg p-4 sm:p-8">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between mb-4 sm:mb-6 gap-2 sm:gap-4">
+                <h3 className="text-xl sm:text-2xl font-bold">Professional Resume</h3>
                 {resumeFile && (
-                  <Button onClick={() => setShowResumeModal(true)} variant="outline" size="sm" className="gap-2">
-                    <ImageIcon className="h-4 w-4" />
+                  <Button
+                    onClick={() => setShowResumeModal(true)}
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3 w-full sm:w-auto"
+                  >
+                    <ImageIcon className="h-3 w-3 sm:h-4 sm:w-4" />
                     Full Screen
                   </Button>
                 )}
@@ -603,7 +612,7 @@ export function ProfileShowcase({
                 <div className="bg-background rounded-xl border shadow-inner overflow-hidden">
                   <iframe
                     src={resumeFile}
-                    className="w-full h-[700px]"
+                    className="w-full h-[500px] sm:h-[700px]"
                     title="Resume"
                     style={{ border: "none" }}
                     onLoad={() => console.log("[v0] Resume loaded successfully")}
