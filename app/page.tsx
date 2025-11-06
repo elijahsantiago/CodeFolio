@@ -296,6 +296,8 @@ export default function HomePage() {
                   My Profile
                 </Button>
 
+                <NotificationsPanel buttonStyle={buttonStyle} inMenu={true} onClose={() => setMenuOpen(false)} />
+
                 <Button
                   variant="outline"
                   size="lg"
@@ -356,10 +358,6 @@ export default function HomePage() {
                   style={{ borderColor: isDark(backgroundColor) ? "#ffffff20" : "#00000020" }}
                 />
 
-                <div className="md:hidden">
-                  <NotificationsPanel buttonStyle={buttonStyle} inMenu={true} onClose={() => setMenuOpen(false)} />
-                </div>
-
                 <Button
                   variant="outline"
                   size="lg"
@@ -376,10 +374,6 @@ export default function HomePage() {
               </div>
             </SheetContent>
           </Sheet>
-
-          <div className="hidden md:flex items-center gap-2">
-            <NotificationsPanel buttonStyle={buttonStyle} />
-          </div>
         </div>
 
         {showFeed ? (

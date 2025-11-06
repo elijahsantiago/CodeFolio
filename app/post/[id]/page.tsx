@@ -112,6 +112,7 @@ export default function PostPage() {
           isClickable={false}
           autoShowComments={true}
           commentsLayout="side"
+          showExactTimestamp={true} // Show exact date and time on detail view
         />
       </div>
     </div>

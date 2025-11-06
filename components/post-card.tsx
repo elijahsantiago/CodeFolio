@@ -35,6 +35,7 @@ interface PostCardProps {
   autoShowComments?: boolean
   commentsLayout?: "below" | "side"
   compact?: boolean
+  showExactTimestamp?: boolean // Added prop to show exact date/time
 }
 
 export function PostCard({
@@ -46,6 +47,7 @@ export function PostCard({
   autoShowComments = false,
   commentsLayout = "below",
   compact = false,
+  showExactTimestamp = false, // Added prop to show exact date/time
 }: PostCardProps) {
   const [isLiked, setIsLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(post.likeCount || 0)
@@ -237,9 +239,38 @@ export function PostCard({
 
     try {
       const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp.toMillis())
+      const now = new Date()
+      const diffInMs = now.getTime() - date.getTime()
+      const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
+
+      // For posts older than 6 days, show weeks
+      if (diffInDays >= 6) {
+        const weeks = Math.floor(diffInDays / 7)
+        return `${weeks}w`
+      }
+
+      // For posts less than 6 days old, use the default format
       return formatDistanceToNow(date, { addSuffix: true })
     } catch {
       return "Just now"
+    }
+  }
+
+  const formatExactTimestamp = (timestamp: any) => {
+    if (!timestamp) return "Unknown date"
+
+    try {
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp.toMillis())
+      return date.toLocaleString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      })
+    } catch {
+      return "Unknown date"
     }
   }
 
@@ -501,7 +532,9 @@ export function PostCard({
               >
                 {post.userName}
               </p>
-              <p className="text-xs text-muted-foreground">{formatTimestamp(post.createdAt)}</p>
+              <p className="text-xs text-muted-foreground">
+                {showExactTimestamp ? formatExactTimestamp(post.createdAt) : formatTimestamp(post.createdAt)}
+              </p>
             </div>
           </div>
 
@@ -549,7 +582,9 @@ export function PostCard({
                 >
                   {post.userName}
                 </p>
-                <p className="text-xs sm:text-sm text-muted-foreground">{formatTimestamp(post.createdAt)}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  {showExactTimestamp ? formatExactTimestamp(post.createdAt) : formatTimestamp(post.createdAt)}
+                </p>
               </div>
             </div>
 
@@ -664,7 +699,9 @@ export function PostCard({
             <p className="font-semibold cursor-pointer hover:underline" onClick={() => navigateToProfile(post.userId)}>
               {post.userName}
             </p>
-            <p className="text-sm text-muted-foreground">{formatTimestamp(post.createdAt)}</p>
+            <p className="text-sm text-muted-foreground">
+              {showExactTimestamp ? formatExactTimestamp(post.createdAt) : formatTimestamp(post.createdAt)}
+            </p>
           </div>
         </div>
 
