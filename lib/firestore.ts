@@ -12,6 +12,8 @@ import {
   limit,
   serverTimestamp,
   type Timestamp,
+  // Import limit from firebase/firestore for clarity, though often it's implicitly imported with other functions
+  limit as firebaseLimit,
 } from "firebase/firestore"
 import { db, isFirebaseConfigured } from "./firebase"
 
@@ -90,6 +92,7 @@ export interface ShowcaseItem {
   content: string
   title: string
   description: string
+  imageUrl?: string // Added imageUrl to ShowcaseItem for trending profiles
 }
 
 export interface Connection {
@@ -1432,34 +1435,42 @@ export async function getPostsByUser(
   hasMore: boolean
 }> {
   if (!isFirebaseConfigured()) {
+    console.log("[v0] getPostsByUser: Firebase not configured")
     return { posts: [], lastDoc: null, hasMore: false }
   }
 
   if (!db) {
+    console.log("[v0] getPostsByUser: Database not initialized")
     return { posts: [], lastDoc: null, hasMore: false }
   }
 
   try {
-    console.log("[v0] Fetching posts for user:", userId)
+    console.log("[v0] getPostsByUser: Fetching posts for user:", userId)
     const postsRef = collection(db, "posts")
     const q = query(postsRef, where("userId", "==", userId), orderBy("createdAt", "desc"), limit(maxResults + 1))
 
+    console.log("[v0] getPostsByUser: Executing query...")
     const querySnapshot = await getDocs(q)
+    console.log("[v0] getPostsByUser: Query returned", querySnapshot.docs.length, "documents")
+
     const posts: Post[] = []
 
     const hasMore = querySnapshot.docs.length > maxResults
     const docsToProcess = hasMore ? querySnapshot.docs.slice(0, maxResults) : querySnapshot.docs
 
     docsToProcess.forEach((doc) => {
-      posts.push({ id: doc.id, ...doc.data() } as Post)
+      const postData = { id: doc.id, ...doc.data() } as Post
+      console.log("[v0] getPostsByUser: Post", doc.id, "userId:", postData.userId)
+      posts.push(postData)
     })
 
     const lastDoc = hasMore ? querySnapshot.docs[maxResults - 1] : null
 
-    console.log("[v0] Found", posts.length, "posts for user")
+    console.log("[v0] getPostsByUser: Returning", posts.length, "posts")
     return { posts, lastDoc, hasMore }
   } catch (error: any) {
-    console.error("[v0] Error getting user posts:", error)
+    console.error("[v0] getPostsByUser: Error getting user posts:", error)
+    console.error("[v0] getPostsByUser: Error details:", error.message, error.code)
     return { posts: [], lastDoc: null, hasMore: false }
   }
 }
@@ -2081,5 +2092,234 @@ export async function searchPosts(
   } catch (error: any) {
     console.error("[v0] Error searching posts:", error)
     return { posts: [], lastDoc: null, hasMore: false }
+  }
+}
+
+export async function getRecommendedProfiles(userId: string, limit = 6, isAdmin = false): Promise<ProfileCard[]> {
+  if (!isFirebaseConfigured() || !db || !userId) {
+    return []
+  }
+
+  try {
+    console.log("[v0] Getting recommended profiles for user:", userId)
+
+    // Get user's profile to access their connections
+    const userProfileRef = doc(db, "profiles", userId)
+    const userProfileSnap = await getDoc(userProfileRef)
+
+    if (!userProfileSnap.exists()) {
+      return []
+    }
+
+    const userProfile = userProfileSnap.data() as UserProfile
+    const userConnections = userProfile.connections || []
+    const userConnectionIds = new Set(userConnections.map((c) => c.userId))
+
+    // Get all profiles to find friends of friends
+    const profilesRef = collection(db, "profiles")
+    const q = isAdmin
+      ? query(profilesRef, orderBy("updatedAt", "desc"), firebaseLimit(100))
+      : query(profilesRef, where("isPublic", "==", true), orderBy("updatedAt", "desc"), firebaseLimit(100))
+
+    const querySnapshot = await getDocs(q)
+    const recommendations: Map<string, { profile: ProfileCard; mutualCount: number }> = new Map()
+
+    // For each connection's connections, count mutual connections
+    for (const connection of userConnections) {
+      const connProfileRef = doc(db, "profiles", connection.userId)
+      const connProfileSnap = await getDoc(connProfileRef)
+
+      if (connProfileSnap.exists()) {
+        const connProfile = connProfileSnap.data() as UserProfile
+        const theirConnections = connProfile.connections || []
+
+        for (const theirConn of theirConnections) {
+          // Skip if it's the user themselves or already connected
+          if (theirConn.userId === userId || userConnectionIds.has(theirConn.userId)) {
+            continue
+          }
+
+          // Count how many mutual connections this profile has
+          const existing = recommendations.get(theirConn.userId)
+          if (existing) {
+            existing.mutualCount++
+          } else {
+            // Find the full profile card for this user
+            querySnapshot.forEach((docSnap) => {
+              if (docSnap.id === theirConn.userId) {
+                const profile = docSnap.data() as UserProfile
+                recommendations.set(theirConn.userId, {
+                  profile: {
+                    id: docSnap.id,
+                    profileName: profile.profileName,
+                    profileDescription: profile.profileDescription,
+                    profilePicture: profile.profilePicture,
+                    backgroundColor: profile.backgroundColor,
+                    backgroundImage: profile.backgroundImage,
+                    layout: profile.layout,
+                    showcaseItemCount: profile.showcaseItems?.length || 0,
+                    // Assuming showcaseItem has an imageUrl field, adjust if needed
+                    previewImages:
+                      profile.showcaseItems?.slice(0, 4).map((item) => item.imageUrl || item.content) || [],
+                    isPublic: profile.isPublic,
+                    email: profile.email,
+                  },
+                  mutualCount: 1,
+                })
+              }
+            })
+          }
+        }
+      }
+    }
+
+    // Sort by mutual connections and return top results
+    const sorted = Array.from(recommendations.values())
+      .sort((a, b) => b.mutualCount - a.mutualCount)
+      .slice(0, limit)
+      .map((item) => item.profile)
+
+    console.log("[v0] Found", sorted.length, "recommended profiles")
+    return sorted
+  } catch (error) {
+    console.error("[v0] Error getting recommended profiles:", error)
+    return []
+  }
+}
+
+export async function getTrendingProfiles(limit = 3, isAdmin = false): Promise<ProfileCard[]> {
+  if (!isFirebaseConfigured() || !db) {
+    return []
+  }
+
+  try {
+    console.log("[v0] Getting trending profiles")
+
+    const profilesRef = collection(db, "profiles")
+
+    // Get profiles ordered by update time (most recently updated = most active)
+    const q = isAdmin
+      ? query(profilesRef, orderBy("updatedAt", "desc"), firebaseLimit(limit * 3))
+      : query(profilesRef, where("isPublic", "==", true), orderBy("updatedAt", "desc"), firebaseLimit(limit * 3))
+
+    const querySnapshot = await getDocs(q)
+    const profiles: Array<ProfileCard & { score: number }> = []
+
+    querySnapshot.forEach((docSnap) => {
+      const profile = docSnap.data() as UserProfile
+
+      // Calculate a "trending score" based on multiple factors
+      const itemCount = profile.showcaseItems?.length || 0
+      const connectionCount = profile.connections?.length || 0
+      // Check for existence and type of updatedAt before calling toMillis
+      const lastUpdateTimestamp = profile.updatedAt
+      const hasRecentUpdate =
+        lastUpdateTimestamp && typeof lastUpdateTimestamp.toMillis === "function"
+          ? Date.now() - lastUpdateTimestamp.toMillis() < 7 * 24 * 60 * 60 * 1000 // Within last week
+          : false
+
+      // Score: items (up to 20 points) + connections (up to 30 points) + recent activity (50 points)
+      const score = Math.min(itemCount * 2, 20) + Math.min(connectionCount * 3, 30) + (hasRecentUpdate ? 50 : 0)
+
+      profiles.push({
+        id: docSnap.id,
+        profileName: profile.profileName,
+        profileDescription: profile.profileDescription,
+        profilePicture: profile.profilePicture,
+        backgroundColor: profile.backgroundColor,
+        backgroundImage: profile.backgroundImage,
+        layout: profile.layout,
+        showcaseItemCount: itemCount,
+        // Assuming showcaseItem has an imageUrl field, adjust if needed. Also check item.content for fallback.
+        previewImages: profile.showcaseItems?.slice(0, 4).map((item) => item.imageUrl || item.content) || [],
+        isPublic: profile.isPublic,
+        email: profile.email,
+        score,
+      })
+    })
+
+    // Sort by score and return top results
+    const sorted = profiles.sort((a, b) => b.score - a.score).slice(0, limit)
+
+    console.log("[v0] Found", sorted.length, "trending profiles")
+    return sorted
+  } catch (error) {
+    console.error("[v0] Error getting trending profiles:", error)
+    return []
+  }
+}
+
+export async function getTrendingPosts(maxResults = 10): Promise<Post[]> {
+  if (!isFirebaseConfigured() || !db) {
+    return []
+  }
+
+  try {
+    const postsRef = collection(db, "posts")
+    // Get posts from the last 7 days
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+    const q = query(postsRef, where("createdAt", ">=", sevenDaysAgo), orderBy("createdAt", "desc"), limit(50))
+
+    const querySnapshot = await getDocs(q)
+    const posts: Post[] = []
+
+    querySnapshot.forEach((doc) => {
+      posts.push({ id: doc.id, ...doc.data() } as Post)
+    })
+
+    // Sort by engagement (likes + comments + views)
+    const sortedPosts = posts.sort((a, b) => {
+      // Note: `a.comments` is not directly available in the Post interface. Assuming a structure where comments are nested or aggregated.
+      // For now, we'll use `likeCount` and `viewCount` as they are directly on the Post interface.
+      // If `commentCount` is intended to be used, it should be available on the Post interface.
+      const scoreA = (a.likes?.length || 0) * 3 + (a.commentCount || 0) * 2 + (a.viewCount || 0)
+      const scoreB = (b.likes?.length || 0) * 3 + (b.commentCount || 0) * 2 + (b.viewCount || 0)
+      return scoreB - scoreA
+    })
+
+    return sortedPosts.slice(0, maxResults)
+  } catch (error) {
+    console.error("[v0] Error getting trending posts:", error)
+    return []
+  }
+}
+
+export async function getRecommendedPosts(userId: string, maxResults = 10): Promise<Post[]> {
+  if (!isFirebaseConfigured() || !db) {
+    return []
+  }
+
+  try {
+    // Get user's connections
+    const userProfile = await getUserProfile(userId)
+    if (!userProfile || !userProfile.connections || userProfile.connections.length === 0) {
+      return []
+    }
+
+    const connectionIds = userProfile.connections.map((c) => c.userId)
+
+    // Get posts from connections
+    const postsRef = collection(db, "posts")
+    // Firebase limits to 10 items in 'in' query. If more than 10 connections, we'll need to batch or adjust.
+    const q = query(
+      postsRef,
+      where("userId", "in", connectionIds.slice(0, 10)),
+      orderBy("createdAt", "desc"),
+      limit(maxResults),
+    )
+
+    const querySnapshot = await getDocs(q)
+    const posts: Post[] = []
+
+    querySnapshot.forEach((doc) => {
+      posts.push({ id: doc.id, ...doc.data() } as Post)
+    })
+
+    return posts
+  } catch (error) {
+    console.error("[v0] Error getting recommended posts:", error)
+    return []
   }
 }

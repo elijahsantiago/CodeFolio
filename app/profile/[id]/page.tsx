@@ -94,12 +94,12 @@ export default function ProfileViewPage() {
     async function loadUserPosts() {
       try {
         setPostsLoading(true)
-        console.log("[v0] Loading posts for user:", params.id)
-        const { posts: userPosts } = await getPostsByUser(params.id as string, 10)
+        const userId = params.id as string
+        const { posts: userPosts } = await getPostsByUser(userId, 10)
         setPosts(userPosts)
-        console.log("[v0] Loaded", userPosts.length, "posts")
       } catch (error) {
         console.error("Error loading user posts:", error)
+        setPosts([])
       } finally {
         setPostsLoading(false)
       }
@@ -331,15 +331,6 @@ export default function ProfileViewPage() {
               </Button>
             )}
           </div>
-        </div>
-
-        <div className="mb-2 sm:mb-4">
-          <h1
-            className="text-lg sm:text-xl md:text-2xl font-bold break-words px-2 sm:px-0"
-            style={{ color: profile.textColor || "#000000" }}
-          >
-            {profile.profileName}'s Portfolio
-          </h1>
         </div>
 
         <ProfileShowcase

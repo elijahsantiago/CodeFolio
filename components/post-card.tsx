@@ -25,6 +25,7 @@ import { formatDistanceToNow } from "date-fns"
 import { doc, onSnapshot } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { useRouter } from "next/navigation"
+import { formatNumber } from "@/lib/utils"
 
 interface PostCardProps {
   post: Post
@@ -543,7 +544,7 @@ export function PostCard({
           <div className="flex items-center gap-4 pt-3 border-t text-sm">
             <div className="flex items-center gap-1 text-muted-foreground">
               <Heart className={`h-4 w-4 ${isLiked ? "fill-red-500 text-red-500" : ""}`} />
-              <span>{likeCount}</span>
+              <span>{formatNumber(likeCount, false)}</span>
             </div>
             <div className="flex items-center gap-1 text-muted-foreground">
               <MessageCircle className="h-4 w-4" />
@@ -551,7 +552,7 @@ export function PostCard({
             </div>
             <div className="flex items-center gap-1 text-muted-foreground ml-auto">
               <Eye className="h-4 w-4" />
-              <span>{post.viewCount || 0}</span>
+              <span>{formatNumber(post.viewCount || 0, false)}</span>
             </div>
           </div>
         </div>
@@ -656,7 +657,7 @@ export function PostCard({
               className={`gap-1 sm:gap-2 ${isLiked ? "text-red-500 hover:text-red-600" : ""}`}
             >
               <Heart className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
-              <span className="text-sm">{likeCount}</span>
+              <span className="text-sm">{formatNumber(likeCount, showExactTimestamp)}</span>
             </Button>
 
             <Button variant="ghost" size="sm" onClick={handleToggleComments} className="gap-1 sm:gap-2">
@@ -666,7 +667,7 @@ export function PostCard({
 
             <div className="flex items-center gap-1 sm:gap-2 text-muted-foreground text-sm ml-auto">
               <Eye className="h-4 w-4" />
-              <span>{post.viewCount || 0}</span>
+              <span>{formatNumber(post.viewCount || 0, showExactTimestamp)}</span>
             </div>
           </div>
         </Card>
@@ -771,7 +772,7 @@ export function PostCard({
           className={`gap-2 ${isLiked ? "text-red-500 hover:text-red-600" : ""}`}
         >
           <Heart className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
-          <span>{likeCount}</span>
+          <span>{formatNumber(likeCount, false)}</span>
         </Button>
 
         <Button variant="ghost" size="sm" onClick={handleToggleComments} className="gap-2">
@@ -781,7 +782,7 @@ export function PostCard({
 
         <div className="flex items-center gap-2 text-muted-foreground text-sm ml-auto">
           <Eye className="h-4 w-4" />
-          <span>{post.viewCount || 0}</span>
+          <span>{formatNumber(post.viewCount || 0, false)}</span>
         </div>
       </div>
 

@@ -289,7 +289,7 @@ export function ProfileShowcase({
         return (
           <div className="rounded-lg border-2 overflow-hidden relative" style={profileBoxStyle}>
             {bannerImage && (
-              <div className="h-24 sm:h-32 w-full relative">
+              <div className="h-32 sm:h-40 md:h-48 w-full relative">
                 <img
                   src={bannerImage || "/placeholder.svg"}
                   alt="Profile Banner"
