@@ -8,10 +8,12 @@ import { ProfileSearch } from "@/components/profile-search"
 import { LiveFeed } from "@/components/live-feed"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { Edit, Eye, LogOut, Loader2, Menu, Home, Rss, Search } from "lucide-react"
+import { Edit, Eye, LogOut, Loader2, Menu, Home, Rss, Search, Shield } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useProfile } from "@/hooks/use-profile"
 import { NotificationsPanel } from "@/components/notifications-panel"
+import { VerificationManager } from "@/components/verification-manager"
+import type { VerificationBadge } from "@/lib/firestore"
 
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -19,6 +21,7 @@ export default function HomePage() {
   const [showSearch, setShowSearch] = useState(false)
   const [showFeed, setShowFeed] = useState(false)
   const [highlightPostId, setHighlightPostId] = useState<string | null>(null)
+  const [showVerification, setShowVerification] = useState(false)
   const { user, loading: authLoading, logout } = useAuth()
   const { profile, loading: profileLoading, updateProfile } = useProfile()
   const router = useRouter()
@@ -287,10 +290,11 @@ export default function HomePage() {
                   onClick={() => {
                     setShowFeed(false)
                     setShowSearch(false)
+                    setShowVerification(false)
                     setMenuOpen(false)
                   }}
                   className="w-full justify-start gap-3 font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
-                  style={!showSearch && !showFeed ? activeButtonStyle : buttonStyle}
+                  style={!showSearch && !showFeed && !showVerification ? activeButtonStyle : buttonStyle}
                 >
                   <Home className="h-5 w-5" />
                   My Profile
@@ -304,6 +308,7 @@ export default function HomePage() {
                   onClick={() => {
                     setShowFeed(true)
                     setShowSearch(false)
+                    setShowVerification(false)
                     setMenuOpen(false)
                   }}
                   className="w-full justify-start gap-3 font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
@@ -319,6 +324,7 @@ export default function HomePage() {
                   onClick={() => {
                     setShowSearch(true)
                     setShowFeed(false)
+                    setShowVerification(false)
                     setMenuOpen(false)
                   }}
                   className="w-full justify-start gap-3 font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
@@ -328,7 +334,7 @@ export default function HomePage() {
                   Discover Profiles
                 </Button>
 
-                {!showSearch && !showFeed && (
+                {!showSearch && !showFeed && !showVerification && (
                   <Button
                     onClick={() => {
                       setIsEditing(!isEditing)
@@ -350,6 +356,22 @@ export default function HomePage() {
                         Edit Profile
                       </>
                     )}
+                  </Button>
+                )}
+
+                {!showSearch && !showFeed && !isEditing && (
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => {
+                      setShowVerification(true)
+                      setMenuOpen(false)
+                    }}
+                    className="w-full justify-start gap-3 font-semibold rounded-xl shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md"
+                    style={showVerification ? activeButtonStyle : buttonStyle}
+                  >
+                    <Shield className="h-5 w-5" />
+                    Verification
                   </Button>
                 )}
 
@@ -380,6 +402,22 @@ export default function HomePage() {
           <LiveFeed highlightPostId={highlightPostId} onPostHighlighted={() => setHighlightPostId(null)} />
         ) : showSearch ? (
           <ProfileSearch />
+        ) : showVerification ? (
+          <div className="max-w-4xl mx-auto">
+            <div className="mb-6">
+              <h1 className="text-3xl font-bold mb-2" style={{ color: textColor }}>
+                Verification Badges
+              </h1>
+              <p className="text-muted-foreground">Verify your credentials to build trust and credibility</p>
+            </div>
+            <VerificationManager
+              userId={user?.uid || ""}
+              currentBadges={profile?.verificationBadges || []}
+              onUpdateBadges={async (badges: VerificationBadge[]) => {
+                await handleProfileUpdate({ verificationBadges: badges })
+              }}
+            />
+          </div>
         ) : (
           <>
             {isEditing ? (

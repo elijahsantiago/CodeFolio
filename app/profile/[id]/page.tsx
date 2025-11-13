@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Loader2, AlertCircle, UserPlus, UserCheck } from "lucide-react"
 import { ProfileShowcase } from "@/components/profile-showcase"
+import { QRBusinessCard } from "@/components/qr-business-card"
 import {
   getUserProfile,
   sendConnectionRequest,
@@ -277,6 +278,12 @@ export default function ProfileViewPage() {
           </Button>
 
           <div className="flex flex-wrap items-center gap-1 sm:gap-2 justify-center sm:justify-end">
+            <QRBusinessCard
+              profileUrl={`${typeof window !== "undefined" ? window.location.origin : ""}/profile/${profile.userId}`}
+              profileName={profile.profileName}
+              profilePicture={profile.profilePicture}
+            />
+
             {canDelete && (
               <>
                 <Button
@@ -363,6 +370,7 @@ export default function ProfileViewPage() {
           posts={posts}
           postsLoading={postsLoading}
           currentUserId={user?.uid}
+          verificationBadges={profile.verificationBadges}
         />
 
         {postsLoading && (

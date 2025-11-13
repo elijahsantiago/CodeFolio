@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Play, ImageIcon, Type, Users, Shield } from "lucide-react"
 import { getContrastTextColor } from "@/lib/color-utils"
 import { PostCard } from "@/components/post-card"
+import { VerificationBadgesDisplay } from "@/components/verification-badge"
+import type { VerificationBadge } from "@/lib/firestore"
 
 interface ShowcaseItem {
   id: string
@@ -63,6 +65,7 @@ interface ProfileShowcaseProps {
   posts?: Post[]
   postsLoading?: boolean
   currentUserId?: string
+  verificationBadges?: VerificationBadge[]
 }
 
 export function ProfileShowcase({
@@ -88,6 +91,7 @@ export function ProfileShowcase({
   posts = [],
   postsLoading = false,
   currentUserId,
+  verificationBadges = [],
 }: ProfileShowcaseProps) {
   const [focusedItem, setFocusedItem] = useState<ShowcaseItem | null>(null)
   const [showConnections, setShowConnections] = useState(false)
@@ -325,6 +329,11 @@ export function ProfileShowcase({
                         <Shield className="h-3 w-3 sm:h-4 sm:w-4 text-foreground" />
                         <span className="text-[10px] sm:text-xs font-bold text-foreground tracking-wide">ADMIN</span>
                       </div>
+                    </div>
+                  )}
+                  {verificationBadges && verificationBadges.length > 0 && (
+                    <div className="mb-2">
+                      <VerificationBadgesDisplay badges={verificationBadges} size="sm" />
                     </div>
                   )}
                 </div>

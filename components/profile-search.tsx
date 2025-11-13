@@ -15,10 +15,12 @@ import {
   getPublicProfileCards,
   getTrendingProfiles,
   getRecommendedProfiles,
+  getUserProfile,
   type ProfileCard,
 } from "@/lib/firestore"
 import { isFirebaseConfigured } from "@/lib/firebase"
 import { useAuth } from "@/hooks/use-auth"
+import { VerificationBadgesDisplay } from "@/components/verification-badge"
 
 interface ProfileSearchProps {
   className?: string
@@ -35,6 +37,7 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
   const [firebaseAvailable, setFirebaseAvailable] = useState(false)
   const [lastDoc, setLastDoc] = useState<any>(null)
   const [hasMore, setHasMore] = useState(false)
+  const [profileBadges, setProfileBadges] = useState<Record<string, any[]>>({})
   const router = useRouter()
   const { user } = useAuth()
 
@@ -63,6 +66,24 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
         setHasMore(publicResult.hasMore)
         setTrendingProfiles(trending)
         setRecommendedProfiles(recommended)
+
+        const allProfiles = [...publicResult.profiles, ...trending, ...recommended]
+        const badgesMap: Record<string, any[]> = {}
+
+        await Promise.all(
+          allProfiles.map(async (profile) => {
+            try {
+              const fullProfile = await getUserProfile(profile.userId)
+              if (fullProfile?.verificationBadges) {
+                badgesMap[profile.userId] = fullProfile.verificationBadges
+              }
+            } catch (error) {
+              console.error(`Error loading badges for ${profile.userId}:`, error)
+            }
+          }),
+        )
+
+        setProfileBadges(badgesMap)
       } catch (error) {
         console.error("Error loading profiles:", error)
       } finally {
@@ -108,6 +129,23 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
       setPublicProfiles((prev) => [...prev, ...result.profiles])
       setLastDoc(result.lastDoc)
       setHasMore(result.hasMore)
+
+      const badgesMap: Record<string, any[]> = { ...profileBadges }
+
+      await Promise.all(
+        result.profiles.map(async (profile) => {
+          try {
+            const fullProfile = await getUserProfile(profile.userId)
+            if (fullProfile?.verificationBadges) {
+              badgesMap[profile.userId] = fullProfile.verificationBadges
+            }
+          } catch (error) {
+            console.error(`Error loading badges for ${profile.userId}:`, error)
+          }
+        }),
+      )
+
+      setProfileBadges(badgesMap)
     } catch (error) {
       console.error("Error loading more profiles:", error)
     } finally {
@@ -147,6 +185,7 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
 
   const renderProfileCard = (profile: ProfileCard) => {
     const isAdminProfile = profile.email === "e.santiago.e1@gmail.com" || profile.email === "gabeasosa@gmail.com"
+    const badges = profileBadges[profile.userId] || []
 
     return (
       <Card
@@ -174,7 +213,7 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1 md:gap-2 mb-1 md:mb-2">
+              <div className="flex items-center gap-1 md:gap-2 mb-1 md:mb-2 flex-wrap">
                 <h4 className="font-bold text-base md:text-xl truncate text-white drop-shadow-lg">
                   {profile.profileName}
                 </h4>
@@ -199,6 +238,11 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
                       <Shield className="h-2.5 w-2.5 md:h-3.5 md:w-3.5 text-gray-900" />
                       <span className="text-[10px] md:text-xs font-bold text-gray-900 tracking-wide">ADMIN</span>
                     </div>
+                  </div>
+                )}
+                {badges.length > 0 && (
+                  <div className="flex items-center">
+                    <VerificationBadgesDisplay badges={badges} size="sm" />
                   </div>
                 )}
               </div>

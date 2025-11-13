@@ -81,9 +81,25 @@ export interface UserProfile {
   connections?: Connection[]
   sentConnectionRequests?: ConnectionRequest[] // Requests sent by this user
   receivedConnectionRequests?: ConnectionRequest[] // Requests received by this user
+  verificationBadges?: VerificationBadge[]
   createdAt: Timestamp
   updatedAt: Timestamp
   searchKeywords: string[]
+}
+
+export interface VerificationBadge {
+  type: "student" | "portfolio" | "certification"
+  verified: boolean
+  verifiedAt?: Timestamp
+  expiresAt?: Timestamp
+  metadata?: {
+    schoolEmail?: string
+    schoolName?: string
+    certificationName?: string
+    certificationFile?: string
+    certificationIssuer?: string
+    certificationDate?: string
+  }
 }
 
 export interface ShowcaseItem {
@@ -177,6 +193,56 @@ export interface ProfileCard {
   updatedAt: Timestamp
 }
 
+export async function checkAndUpdatePortfolioVerification(userId: string): Promise<void> {
+  if (!isFirebaseConfigured() || !db) {
+    return
+  }
+
+  try {
+    const profileRef = doc(db, "profiles", userId)
+    const profileSnap = await getDoc(profileRef)
+
+    if (!profileSnap.exists()) {
+      return
+    }
+
+    const profile = profileSnap.data() as UserProfile
+    const hasResume = !!profile.resumeFile
+    const hasShowcaseItems = (profile.showcaseItems?.length || 0) >= 3
+
+    const currentBadges = profile.verificationBadges || []
+    const portfolioBadgeIndex = currentBadges.findIndex((b) => b.type === "portfolio")
+
+    if (hasResume && hasShowcaseItems) {
+      // Should have portfolio badge
+      if (portfolioBadgeIndex === -1) {
+        // Add portfolio badge
+        const newBadge: VerificationBadge = {
+          type: "portfolio",
+          verified: true,
+          verifiedAt: serverTimestamp() as Timestamp,
+        }
+        await updateDoc(profileRef, {
+          verificationBadges: [...currentBadges, newBadge],
+        })
+        console.log("[v0] Portfolio verification badge added automatically")
+      }
+    } else {
+      // Should not have portfolio badge
+      if (portfolioBadgeIndex !== -1) {
+        // Remove portfolio badge
+        const updatedBadges = currentBadges.filter((b) => b.type !== "portfolio")
+        await updateDoc(profileRef, {
+          verificationBadges: updatedBadges,
+        })
+        console.log("[v0] Portfolio verification badge removed (requirements not met)")
+      }
+    }
+  } catch (error) {
+    console.error("[v0] Error checking portfolio verification:", error)
+  }
+}
+
 // Create or update user profile
 export async function saveUserProfile(userId: string, profileData: Partial<UserProfile>): Promise<void> {
   if (!isFirebaseConfigured()) {
@@ -223,6 +289,10 @@ export async function saveUserProfile(userId: string, profileData: Partial<UserP
         createdAt: serverTimestamp(),
       })
     }
+
+    // Check and update portfolio verification automatically
+    await checkAndUpdatePortfolioVerification(userId)
+
     console.log("[v0] Profile save completed successfully")
   } catch (error: any) {
     console.error("[v0] Error saving profile:", error)
