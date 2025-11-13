@@ -1,11 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { QrCode, Download, Share2 } from "lucide-react"
-import QRCodeStyling from "qr-code-styling"
-import { useEffect, useRef } from "react"
+import { QrCode, Download, Share2 } from 'lucide-react'
+import QRCodeLib from "qrcode"
 
 interface QRBusinessCardProps {
   profileUrl: string
@@ -15,53 +14,49 @@ interface QRBusinessCardProps {
 
 export function QRBusinessCard({ profileUrl, profileName, profilePicture }: QRBusinessCardProps) {
   const [open, setOpen] = useState(false)
-  const qrRef = useRef<HTMLDivElement>(null)
-  const qrCodeRef = useRef<QRCodeStyling | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
-    if (open && qrRef.current && !qrCodeRef.current) {
-      qrCodeRef.current = new QRCodeStyling({
-        width: 300,
-        height: 300,
-        data: profileUrl,
-        margin: 10,
-        qrOptions: {
-          typeNumber: 0,
-          mode: "Byte",
-          errorCorrectionLevel: "H",
-        },
-        imageOptions: {
-          hideBackgroundDots: true,
-          imageSize: 0.4,
-          margin: 4,
-        },
-        dotsOptions: {
-          type: "rounded",
-          color: "#000000",
-        },
-        backgroundOptions: {
-          color: "#ffffff",
-        },
-        image: profilePicture || undefined,
-        cornersSquareOptions: {
-          type: "extra-rounded",
-          color: "#000000",
-        },
-        cornersDotOptions: {
-          type: "dot",
-          color: "#000000",
-        },
+    if (open && profileUrl) {
+      // Use requestAnimationFrame to ensure canvas is in DOM before drawing
+      requestAnimationFrame(() => {
+        if (canvasRef.current) {
+          QRCodeLib.toCanvas(
+            canvasRef.current,
+            profileUrl,
+            {
+              width: 300,
+              margin: 2,
+              color: {
+                dark: "#000000",
+                light: "#FFFFFF",
+              },
+              errorCorrectionLevel: "H",
+            },
+            (error) => {
+              if (error) {
+                console.error("[v0] QR code generation error:", error)
+              }
+            }
+          )
+        }
       })
-
-      qrCodeRef.current.append(qrRef.current)
     }
-  }, [open, profileUrl, profilePicture])
+  }, [open, profileUrl])
 
   const handleDownload = () => {
-    if (qrCodeRef.current) {
-      qrCodeRef.current.download({
-        name: `${profileName}-portfolio-qr`,
-        extension: "png",
+    if (canvasRef.current) {
+      canvasRef.current.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement("a")
+          link.href = url
+          link.download = `${profileName.replace(/\s+/g, "-")}-portfolio-qr.png`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(url)
+        }
       })
     }
   }
@@ -75,12 +70,18 @@ export function QRBusinessCard({ profileUrl, profileName, profilePicture }: QRBu
           url: profileUrl,
         })
       } catch (err) {
-        console.error("Error sharing:", err)
+        if ((err as Error).name !== "AbortError") {
+          await navigator.clipboard.writeText(profileUrl)
+          alert("Portfolio link copied to clipboard!")
+        }
       }
     } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(profileUrl)
-      alert("Portfolio link copied to clipboard!")
+      try {
+        await navigator.clipboard.writeText(profileUrl)
+        alert("Portfolio link copied to clipboard!")
+      } catch (err) {
+        console.error("Error copying to clipboard:", err)
+      }
     }
   }
 
@@ -98,7 +99,15 @@ export function QRBusinessCard({ profileUrl, profileName, profilePicture }: QRBu
           <DialogTitle>Digital Business Card</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col items-center gap-4 py-4">
-          <div className="bg-white p-4 rounded-lg shadow-sm border" ref={qrRef} />
+          <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <canvas
+              ref={canvasRef}
+              width={300}
+              height={300}
+              className="max-w-full h-auto"
+              style={{ display: "block" }}
+            />
+          </div>
           <div className="text-center">
             <p className="font-medium text-lg">{profileName}</p>
             <p className="text-sm text-muted-foreground">Scan to view portfolio</p>
@@ -110,7 +119,7 @@ export function QRBusinessCard({ profileUrl, profileName, profilePicture }: QRBu
             </Button>
             <Button onClick={handleShare} variant="outline" className="flex-1 gap-2 bg-transparent">
               <Share2 className="h-4 w-4" />
-              Share
+              Share Link
             </Button>
           </div>
         </div>
