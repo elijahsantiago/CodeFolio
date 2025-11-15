@@ -1,18 +1,20 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ProfileShowcase } from "@/components/profile-showcase"
 import { ShowcaseEditor } from "@/components/showcase-editor"
 import { ProfileSearch } from "@/components/profile-search"
 import { LiveFeed } from "@/components/live-feed"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { Edit, Eye, LogOut, Loader2, Menu, Home, Rss, Search, Shield } from "lucide-react"
+import { Edit, Eye, LogOut, Loader2, Menu, Home, Rss, Search, Shield } from 'lucide-react'
 import { useAuth } from "@/hooks/use-auth"
 import { useProfile } from "@/hooks/use-profile"
 import { NotificationsPanel } from "@/components/notifications-panel"
 import { VerificationManager } from "@/components/verification-manager"
+import { ThemeToggle } from "@/components/theme-toggle" // Import theme toggle
+import { syncAcceptedConnections } from "@/lib/firestore" // Import sync function
 import type { VerificationBadge } from "@/lib/firestore"
 
 export default function HomePage() {
@@ -188,6 +190,23 @@ export default function HomePage() {
       setFriends(friendsFromConnections)
     }
   }, [profile])
+
+  useEffect(() => {
+    if (user?.uid) {
+      console.log("[v0] Syncing accepted connections on app load for user:", user.uid)
+      syncAcceptedConnections(user.uid).then((syncedCount) => {
+        if (syncedCount > 0) {
+          console.log("[v0] Synced", syncedCount, "accepted connections on app load")
+          // Refresh profile to get updated connections
+          if (updateProfile) {
+            window.location.reload()
+          }
+        }
+      }).catch((error) => {
+        console.error("[v0] Error syncing connections:", error)
+      })
+    }
+  }, [user?.uid])
 
   const handleProfileUpdate = async (updates: any) => {
     if (profile && updateProfile) {
@@ -380,6 +399,8 @@ export default function HomePage() {
                   style={{ borderColor: isDark(backgroundColor) ? "#ffffff20" : "#00000020" }}
                 />
 
+                <ThemeToggle style={buttonStyle} inMenu={true} />
+
                 <Button
                   variant="outline"
                   size="lg"
@@ -483,6 +504,20 @@ export default function HomePage() {
                   handleProfileUpdate({ resumeFile: file })
                 }}
                 userEmail={user?.email || ""}
+                githubUrl={profile?.githubUrl}
+                onGithubUrlChange={(url) => handleProfileUpdate({ githubUrl: url })}
+                linkedinUrl={profile?.linkedinUrl}
+                onLinkedinUrlChange={(url) => handleProfileUpdate({ linkedinUrl: url })}
+                websiteUrl={profile?.websiteUrl}
+                onWebsiteUrlChange={(url) => handleProfileUpdate({ websiteUrl: url })}
+                contactEmail={profile?.contactEmail}
+                onContactEmailChange={(email) => handleProfileUpdate({ contactEmail: email })}
+                phoneNumber={profile?.phoneNumber}
+                onPhoneNumberChange={(phone) => handleProfileUpdate({ phoneNumber: phone })}
+                location={profile?.location}
+                onLocationChange={(location) => handleProfileUpdate({ location })}
+                bannerImage={profile?.bannerImage}
+                onBannerImageChange={(image) => handleProfileUpdate({ bannerImage: image })}
               />
             ) : (
               <ProfileShowcase
@@ -500,6 +535,14 @@ export default function HomePage() {
                 textColor={textColor}
                 friends={friends}
                 resumeFile={resumeFile}
+                verificationBadges={profile?.verificationBadges}
+                githubUrl={profile?.githubUrl}
+                linkedinUrl={profile?.linkedinUrl}
+                websiteUrl={profile?.websiteUrl}
+                contactEmail={profile?.contactEmail}
+                phoneNumber={profile?.phoneNumber}
+                location={profile?.location}
+                profileUserId={user?.uid} 
               />
             )}
           </>

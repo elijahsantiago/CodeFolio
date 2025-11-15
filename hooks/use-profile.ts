@@ -161,36 +161,14 @@ export function useProfile() {
       setSaving(true)
       console.log("[v0] Updating profile with:", updates)
 
-      const sanitizedUpdates = { ...updates }
-      if (sanitizedUpdates.showcaseItems) {
-        sanitizedUpdates.showcaseItems = sanitizedUpdates.showcaseItems.map((item: any) => {
-          // Remove undefined values and ensure all properties are defined
-          const sanitizedItem: any = {
-            id: item.id || Date.now().toString(),
-            type: item.type || "image",
-            title: item.title || "",
-            description: item.description || "",
-            content: item.content || "",
-          }
-
-          // Only add size if it's explicitly set
-          if (item.size) {
-            sanitizedItem.size = item.size
-          }
-
-          return sanitizedItem
-        })
-      }
-
-      await saveUserProfile(user.uid, sanitizedUpdates)
+      await saveUserProfile(user.uid, updates)
 
       // Update local state
-      setProfile((prev) => (prev ? { ...prev, ...sanitizedUpdates } : null))
+      setProfile((prev) => (prev ? { ...prev, ...updates } : null))
       console.log("[v0] Profile updated successfully")
     } catch (error) {
       console.error("Error updating profile:", error)
-      // Still update local state even if database save failed
-      setProfile((prev) => (prev ? { ...prev, ...updates } : null))
+      throw error
     } finally {
       setSaving(false)
     }

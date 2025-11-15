@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useParams, useRouter, useSearchParams } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Loader2, AlertCircle, UserPlus, UserCheck } from "lucide-react"
+import { ArrowLeft, Loader2, AlertCircle, UserPlus, UserCheck } from 'lucide-react'
 import { ProfileShowcase } from "@/components/profile-showcase"
 import { QRBusinessCard } from "@/components/qr-business-card"
 import {
@@ -15,7 +15,10 @@ import {
   adminDeleteProfile,
   adminDeleteShowcaseItem,
   adminResetConnections,
+  adminResetVerificationBadges, // Import new admin functions
+  adminRevertProfileToDefault,
   getPostsByUser,
+  syncAcceptedConnections,
   type UserProfile,
   type Post,
 } from "@/lib/firestore"
@@ -73,17 +76,34 @@ export default function ProfileViewPage() {
   }, [firebaseAvailable, params.id, isAdmin])
 
   useEffect(() => {
-    if (currentUserProfile && profile && user) {
-      const connections = currentUserProfile.connections || []
-      setIsConnected(connections.some((conn) => conn.userId === profile.userId))
-
-      // Check if request was sent using the new hasPendingRequest function
-      hasPendingRequest(user.uid, profile.userId).then((hasPending) => {
-        setRequestSent(hasPending)
+    if (user?.uid && firebaseAvailable) {
+      console.log("[v0] Syncing accepted connections on profile view for user:", user.uid)
+      syncAcceptedConnections(user.uid).then((syncedCount) => {
+        if (syncedCount > 0) {
+          console.log("[v0] Synced", syncedCount, "accepted connections on profile view")
+          // Connections updated, component will re-render with updated currentUserProfile
+        }
+      }).catch((error) => {
+        console.error("[v0] Error syncing connections:", error)
       })
     }
+  }, [user?.uid, firebaseAvailable])
 
-    // Set isOwnProfile after loading the profile
+  useEffect(() => {
+    if (currentUserProfile && profile && user) {
+      const connections = currentUserProfile.connections || []
+      const isAlreadyConnected = connections.some((conn) => conn.userId === profile.userId)
+      setIsConnected(isAlreadyConnected)
+
+      if (!isAlreadyConnected) {
+        hasPendingRequest(user.uid, profile.userId).then((hasPending) => {
+          setRequestSent(hasPending)
+        })
+      } else {
+        setRequestSent(false)
+      }
+    }
+
     if (user && profile) {
       setIsOwnProfile(user.uid === profile.userId)
     }
@@ -146,6 +166,7 @@ export default function ProfileViewPage() {
   }
 
   const canDelete = isAdmin && !isOwnProfile
+  const canResetConnections = isAdmin // Admins can reset any profile including their own
 
   const handleDeleteProfile = async () => {
     if (!canDelete || !profile || !user) return
@@ -178,7 +199,7 @@ export default function ProfileViewPage() {
   }
 
   const handleResetConnections = async () => {
-    if (!canDelete || !profile || !user) return
+    if (!canResetConnections || !profile || !user) return
 
     if (
       confirm(
@@ -204,6 +225,44 @@ export default function ProfileViewPage() {
         } else {
           alert(`Failed to reset connections: ${error.message}`)
         }
+      }
+    }
+  }
+
+  const handleResetBadges = async () => {
+    if (!canResetConnections || !profile || !user) return
+
+    if (
+      confirm(
+        `Are you sure you want to reset all verification badges for ${profile.profileName}? This action cannot be undone.`,
+      )
+    ) {
+      try {
+        await adminResetVerificationBadges(user.email || "", profile.userId)
+        alert("Verification badges reset successfully")
+        window.location.reload()
+      } catch (error: any) {
+        console.error("Error resetting badges:", error)
+        alert(`Failed to reset badges: ${error.message}`)
+      }
+    }
+  }
+
+  const handleRevertProfile = async () => {
+    if (!canResetConnections || !profile || !user) return
+
+    if (
+      confirm(
+        `Are you sure you want to revert ${profile.profileName}'s profile to default settings? This will remove all showcase items, badges, and customizations. This action cannot be undone.`,
+      )
+    ) {
+      try {
+        await adminRevertProfileToDefault(user.email || "", profile.userId)
+        alert("Profile reverted to default successfully")
+        window.location.reload()
+      } catch (error: any) {
+        console.error("Error reverting profile:", error)
+        alert(`Failed to revert profile: ${error.message}`)
       }
     }
   }
@@ -284,27 +343,51 @@ export default function ProfileViewPage() {
               profilePicture={profile.profilePicture}
             />
 
-            {canDelete && (
+            {canResetConnections && (
               <>
                 <Button
-                  onClick={handleResetConnections}
+                  onClick={handleResetBadges}
                   variant="outline"
                   size="sm"
                   className="gap-1 sm:gap-2 bg-transparent text-xs px-2 sm:px-3"
                 >
-                  <span className="hidden sm:inline">Reset Connections</span>
-                  <span className="sm:hidden">Reset</span>
+                  <span className="hidden sm:inline">Reset Badges</span>
+                  <span className="sm:hidden">Badges</span>
                 </Button>
                 <Button
-                  onClick={handleDeleteProfile}
-                  variant="destructive"
+                  onClick={handleRevertProfile}
+                  variant="outline"
                   size="sm"
-                  className="gap-1 sm:gap-2 text-xs px-2 sm:px-3"
+                  className="gap-1 sm:gap-2 bg-transparent text-xs px-2 sm:px-3"
                 >
-                  <span className="hidden sm:inline">Delete Profile</span>
-                  <span className="sm:hidden">Delete</span>
+                  <span className="hidden sm:inline">Revert to Default</span>
+                  <span className="sm:hidden">Revert</span>
                 </Button>
               </>
+            )}
+
+            {canResetConnections && (
+              <Button
+                onClick={handleResetConnections}
+                variant="outline"
+                size="sm"
+                className="gap-1 sm:gap-2 bg-transparent text-xs px-2 sm:px-3"
+              >
+                <span className="hidden sm:inline">Reset Connections</span>
+                <span className="sm:hidden">Reset</span>
+              </Button>
+            )}
+            
+            {canDelete && (
+              <Button
+                onClick={handleDeleteProfile}
+                variant="destructive"
+                size="sm"
+                className="gap-1 sm:gap-2 text-xs px-2 sm:px-3"
+              >
+                <span className="hidden sm:inline">Delete Profile</span>
+                <span className="sm:hidden">Delete</span>
+              </Button>
             )}
 
             {!isOwnProfile && user && (
@@ -371,6 +454,13 @@ export default function ProfileViewPage() {
           postsLoading={postsLoading}
           currentUserId={user?.uid}
           verificationBadges={profile.verificationBadges}
+          githubUrl={profile.githubUrl}
+          linkedinUrl={profile.linkedinUrl}
+          websiteUrl={profile.websiteUrl}
+          contactEmail={profile.contactEmail}
+          phoneNumber={profile.phoneNumber}
+          location={profile.location}
+          profileUserId={profile.userId} // Pass the profile owner's userId
         />
 
         {postsLoading && (

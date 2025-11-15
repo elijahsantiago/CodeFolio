@@ -93,9 +93,9 @@ service cloud.firestore {
     
     // Notifications rules
     match /notifications/{notificationId} {
-      // Users can read their own notifications (both individual docs and queries)
-      allow read: if isAuthenticated() 
-        && (resource == null || resource.data.toUserId == request.auth.uid);
+      // Users can query and read their own notifications
+      allow read: if isAuthenticated() && 
+        (resource == null || resource.data.toUserId == request.auth.uid);
       
       // Authenticated users can create notifications
       allow create: if isAuthenticated();
@@ -107,6 +107,24 @@ service cloud.firestore {
       // Users can delete their own notifications
       allow delete: if isAuthenticated() 
         && resource.data.toUserId == request.auth.uid;
+    }
+    
+    // User Connections rules (for connection sync)
+    match /userConnections/{connectionId} {
+      // Anyone can read connections (public connections)
+      allow read: if true;
+      
+      // Only authenticated users can create connections for themselves
+      allow create: if isAuthenticated() 
+        && request.resource.data.userId == request.auth.uid;
+      
+      // Users can update their own connections
+      allow update: if isAuthenticated() 
+        && resource.data.userId == request.auth.uid;
+      
+      // Users can delete their own connections
+      allow delete: if isAuthenticated() 
+        && resource.data.userId == request.auth.uid;
     }
   }
 }

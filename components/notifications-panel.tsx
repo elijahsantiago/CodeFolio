@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Bell, Check, X, User, MessageCircle, Heart } from "lucide-react"
+import { Bell, Check, X, User, MessageCircle, Heart } from 'lucide-react'
 import {
   respondToConnectionRequest,
   getUserProfile,
@@ -21,7 +21,7 @@ import {
 import { useAuth } from "@/hooks/use-auth"
 import { useProfile } from "@/hooks/use-profile"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 
 interface NotificationsPanelProps {
   buttonStyle?: React.CSSProperties
@@ -76,7 +76,8 @@ export function NotificationsPanel({ buttonStyle, inMenu = false, onClose }: Not
       ])
       setTotalCount(requestCount + notificationCount)
     } catch (error) {
-      console.error("[v0] Error loading counts:", error)
+      // Silently handle errors - no need to spam console
+      console.warn("[v0] Could not load notification counts")
     }
   }
 
@@ -178,18 +179,18 @@ export function NotificationsPanel({ buttonStyle, inMenu = false, onClose }: Not
         </Button>
 
         {isOpen && (
-          <div className="mt-2 rounded-lg border bg-card">
-            <div className="p-3 border-b">
-              <h4 className="font-semibold text-sm">Notifications</h4>
+          <div className="mt-2 rounded-lg border border-border bg-background text-foreground shadow-sm">
+            <div className="p-3 border-b border-border bg-card">
+              <h4 className="font-semibold text-sm text-card-foreground">Notifications</h4>
             </div>
-            <div className="max-h-[300px] overflow-y-auto p-2">
+            <div className="max-h-[300px] overflow-y-auto p-2 bg-card">
               {requests.length === 0 && notifications.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No notifications</p>
               ) : (
                 <div className="space-y-2">
                   {/* Connection Requests */}
                   {requests.map((request) => (
-                    <div key={request.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                    <div key={request.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors">
                       <Avatar className="h-8 w-8 shrink-0">
                         <AvatarImage src={request.fromUserPicture || "/placeholder.svg"} alt={request.fromUserName} />
                         <AvatarFallback>
@@ -197,7 +198,7 @@ export function NotificationsPanel({ buttonStyle, inMenu = false, onClose }: Not
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{request.fromUserName}</p>
+                        <p className="text-xs font-medium truncate text-foreground">{request.fromUserName}</p>
                         <p className="text-xs text-muted-foreground">wants to connect</p>
                       </div>
                       <div className="flex gap-1 shrink-0">
@@ -248,7 +249,7 @@ export function NotificationsPanel({ buttonStyle, inMenu = false, onClose }: Not
                           ) : (
                             <MessageCircle className="h-3 w-3 text-muted-foreground shrink-0" />
                           )}
-                          <p className="text-xs font-medium truncate">{notification.fromUserName}</p>
+                          <p className="text-xs font-medium truncate text-foreground">{notification.fromUserName}</p>
                         </div>
                         <p className="text-xs text-muted-foreground">
                           {notification.type === "post_like" ? "liked your post" : "replied to your comment"}
@@ -296,21 +297,21 @@ export function NotificationsPanel({ buttonStyle, inMenu = false, onClose }: Not
       <DropdownMenuContent
         align="end"
         side="bottom"
-        className="w-96 p-0 min-h-[100px]"
+        className="w-96 p-0 min-h-[100px] bg-card text-card-foreground border-border"
         sideOffset={8}
         style={{ zIndex: 50 }}
       >
-        <div className="p-4 border-b">
-          <h3 className="font-semibold text-base">Notifications</h3>
+        <div className="p-4 border-b border-border bg-card">
+          <h3 className="font-semibold text-base text-card-foreground">Notifications</h3>
         </div>
-        <div className="max-h-[400px] overflow-y-auto p-2">
+        <div className="max-h-[400px] overflow-y-auto p-2 bg-card">
           {requests.length === 0 && notifications.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">No notifications</p>
           ) : (
             <div className="space-y-2">
               {/* Connection Requests */}
               {requests.map((request) => (
-                <div key={request.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <div key={request.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors">
                   <Avatar className="h-10 w-10 shrink-0">
                     <AvatarImage src={request.fromUserPicture || "/placeholder.svg"} alt={request.fromUserName} />
                     <AvatarFallback>
@@ -318,7 +319,7 @@ export function NotificationsPanel({ buttonStyle, inMenu = false, onClose }: Not
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{request.fromUserName}</p>
+                    <p className="text-sm font-medium truncate text-card-foreground">{request.fromUserName}</p>
                     <p className="text-xs text-muted-foreground">wants to connect</p>
                   </div>
                   <div className="flex gap-2 shrink-0">
@@ -369,7 +370,7 @@ export function NotificationsPanel({ buttonStyle, inMenu = false, onClose }: Not
                       ) : (
                         <MessageCircle className="h-4 w-4 text-muted-foreground shrink-0" />
                       )}
-                      <p className="text-sm font-medium truncate">{notification.fromUserName}</p>
+                      <p className="text-sm font-medium truncate text-card-foreground">{notification.fromUserName}</p>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {notification.type === "post_like" ? "liked your post" : "replied to your comment"}

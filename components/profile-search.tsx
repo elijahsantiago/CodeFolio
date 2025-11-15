@@ -3,19 +3,20 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Search, User, AlertCircle, Shield, Loader2, TrendingUp, Users, Sparkles } from "lucide-react"
+import { Search, User, AlertCircle, Loader2, TrendingUp, Users, Sparkles } from 'lucide-react'
 import {
   searchProfileCards,
   getPublicProfileCards,
   getTrendingProfiles,
   getRecommendedProfiles,
   getUserProfile,
+  syncAcceptedConnections,
   type ProfileCard,
 } from "@/lib/firestore"
 import { isFirebaseConfigured } from "@/lib/firebase"
@@ -53,6 +54,14 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
     async function loadInitialProfiles() {
       try {
         setLoading(true)
+
+        if (user) {
+          console.log("[v0] Syncing accepted connections for user:", user.uid)
+          const syncedCount = await syncAcceptedConnections(user.uid)
+          if (syncedCount > 0) {
+            console.log("[v0] Synced", syncedCount, "accepted connections")
+          }
+        }
 
         // Load all profile types in parallel
         const [publicResult, trending, recommended] = await Promise.all([
@@ -184,8 +193,12 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
   }
 
   const renderProfileCard = (profile: ProfileCard) => {
-    const isAdminProfile = profile.email === "e.santiago.e1@gmail.com" || profile.email === "gabeasosa@gmail.com"
+    const isAdminProfile = profile.userId === "F8YW5oQ8GIUhfkjAeShCQyvNMg83" || profile.userId === "H8lmJGjcrNOwWlUfTYviIgiPaV83"
     const badges = profileBadges[profile.userId] || []
+
+    const allBadges = isAdminProfile 
+      ? [{ type: 'admin' as const, verified: true, metadata: {} }, ...badges]
+      : badges
 
     return (
       <Card
@@ -207,51 +220,26 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
           <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/90" />
           <div className="relative z-10 flex items-center gap-2 md:gap-4">
             <Avatar className="h-12 w-12 md:h-20 md:w-20 ring-2 md:ring-4 ring-white/30 shadow-2xl">
-              <AvatarImage src={profile.profilePicture || "/placeholder.svg"} alt={profile.profileName} />
+              <AvatarImage src={profile.profilePicture || "/placeholder.svg"} alt={profile.profileName || "Profile"} />
               <AvatarFallback>
                 <User className="h-6 w-6 md:h-10 md:w-10" />
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1 md:gap-2 mb-1 md:mb-2 flex-wrap">
-                <h4 className="font-bold text-base md:text-xl truncate text-white drop-shadow-lg">
-                  {profile.profileName}
+                <h4 className="font-bold text-base md:text-xl truncate text-white drop-shadow-lg" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>
+                  {profile.profileName || "Anonymous User"}
                 </h4>
-                {isAdminProfile && (
-                  <div className="relative">
-                    <style jsx>{`
-                      @keyframes rainbow-border {
-                        0% { border-color: #ff0000; }
-                        14% { border-color: #ff7f00; }
-                        28% { border-color: #ffff00; }
-                        42% { border-color: #00ff00; }
-                        57% { border-color: #0000ff; }
-                        71% { border-color: #4b0082; }
-                        85% { border-color: #9400d3; }
-                        100% { border-color: #ff0000; }
-                      }
-                      .rainbow-outline {
-                        animation: rainbow-border 3s linear infinite;
-                      }
-                    `}</style>
-                    <div className="flex items-center gap-1 md:gap-1.5 px-1.5 md:px-2.5 py-0.5 md:py-1.5 bg-white/95 backdrop-blur-sm rounded-lg border-2 rainbow-outline shadow-xl">
-                      <Shield className="h-2.5 w-2.5 md:h-3.5 md:w-3.5 text-gray-900" />
-                      <span className="text-[10px] md:text-xs font-bold text-gray-900 tracking-wide">ADMIN</span>
-                    </div>
-                  </div>
-                )}
-                {badges.length > 0 && (
-                  <div className="flex items-center">
-                    <VerificationBadgesDisplay badges={badges} size="sm" />
-                  </div>
+                {allBadges.length > 0 && (
+                  <VerificationBadgesDisplay badges={allBadges} size="sm" />
                 )}
               </div>
               <div className="flex gap-1 md:gap-2">
                 <Badge className="text-[10px] md:text-xs bg-white text-black font-semibold shadow-md px-1.5 md:px-2 py-0 md:py-0.5">
-                  {profile.layout}
+                  {profile.layout || "default"}
                 </Badge>
                 <Badge className="text-[10px] md:text-xs bg-black/80 text-white border-2 border-white/40 font-semibold shadow-md px-1.5 md:px-2 py-0 md:py-0.5">
-                  {profile.showcaseItemCount} items
+                  {profile.showcaseItemCount || 0} items
                 </Badge>
               </div>
             </div>
@@ -302,7 +290,7 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
 
         <CardContent className="p-3 md:p-6">
           <p className="text-xs md:text-sm text-foreground/80 mb-3 md:mb-5 line-clamp-2 leading-relaxed">
-            {profile.profileDescription}
+            {profile.profileDescription || "No description available"}
           </p>
 
           {profile.previewImages.length > 0 && (
@@ -311,26 +299,40 @@ export function ProfileSearch({ className }: ProfileSearchProps) {
                 Portfolio Preview
               </p>
               <div className="grid grid-cols-2 gap-2 md:gap-3">
-                {profile.previewImages.map((imageUrl, index) => (
-                  <div
-                    key={index}
-                    className="aspect-square bg-muted rounded-lg md:rounded-xl overflow-hidden relative group/item shadow-sm"
-                  >
-                    <img
-                      src={imageUrl || "/placeholder.svg"}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-300"
-                      loading="lazy"
-                    />
-                    {index === 3 && profile.showcaseItemCount > 4 && (
-                      <div className="absolute inset-0 bg-black/70 flex items-center justify-center backdrop-blur-sm">
-                        <span className="text-white font-semibold text-xs md:text-sm">
-                          +{profile.showcaseItemCount - 4} more
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                {profile.previewImages.map((content, index) => {
+                  const isValidImage = content && (content.startsWith('http') || content.startsWith('data:image') || content.startsWith('/'))
+                  
+                  return (
+                    <div
+                      key={index}
+                      className="aspect-square bg-muted rounded-lg md:rounded-xl overflow-hidden relative group/item shadow-sm"
+                    >
+                      {isValidImage ? (
+                        <>
+                          <img
+                            src={content || "/placeholder.svg"}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                          {index === 3 && profile.showcaseItemCount > 4 && (
+                            <div className="absolute inset-0 bg-black/70 flex items-center justify-center backdrop-blur-sm">
+                              <span className="text-white font-semibold text-xs md:text-sm">
+                                +{profile.showcaseItemCount - 4} more
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="w-full h-full p-3 md:p-4 flex items-center justify-center bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 border-2 border-primary/20">
+                          <p className="text-[10px] md:text-xs text-center text-foreground font-medium line-clamp-6 leading-relaxed">
+                            {content || 'No preview available'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}

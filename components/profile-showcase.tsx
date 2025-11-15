@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useEffect, type KeyboardEvent } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Play, ImageIcon, Type, Users, Shield } from "lucide-react"
+import { Play, ImageIcon, Type, Users, Shield, Github, Linkedin, Globe, Mail, Phone, MapPin } from 'lucide-react'
 import { getContrastTextColor } from "@/lib/color-utils"
 import { PostCard } from "@/components/post-card"
 import { VerificationBadgesDisplay } from "@/components/verification-badge"
@@ -66,6 +66,13 @@ interface ProfileShowcaseProps {
   postsLoading?: boolean
   currentUserId?: string
   verificationBadges?: VerificationBadge[]
+  githubUrl?: string
+  linkedinUrl?: string
+  websiteUrl?: string
+  contactEmail?: string
+  phoneNumber?: string
+  location?: string
+  profileUserId?: string // Added to check if profile owner is admin
 }
 
 export function ProfileShowcase({
@@ -92,11 +99,20 @@ export function ProfileShowcase({
   postsLoading = false,
   currentUserId,
   verificationBadges = [],
+  githubUrl,
+  linkedinUrl,
+  websiteUrl,
+  contactEmail,
+  phoneNumber,
+  location,
+  profileUserId, // Receive the profile owner's userId
 }: ProfileShowcaseProps) {
   const [focusedItem, setFocusedItem] = useState<ShowcaseItem | null>(null)
   const [showConnections, setShowConnections] = useState(false)
   const [activeTab, setActiveTab] = useState<"showcase" | "posts" | "resume">("showcase")
   const [showResumeModal, setShowResumeModal] = useState(false)
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -133,7 +149,16 @@ export function ProfileShowcase({
             className={`relative overflow-hidden ${isFocused ? "" : "rounded-lg cursor-pointer"}`}
             onClick={() => !isFocused && setFocusedItem(item)}
           >
-            <img src={item.content || "/placeholder.svg"} alt={item.title} className={imageClasses} />
+            {item.content && (item.content.startsWith('http') || item.content.startsWith('data:image') || item.content.startsWith('/')) ? (
+              <img src={item.content || "/placeholder.svg"} alt={item.title} className={imageClasses} />
+            ) : (
+              <div className="w-full h-48 bg-muted flex items-center justify-center">
+                <div className="text-center p-4">
+                  <ImageIcon className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Invalid image URL</p>
+                </div>
+              </div>
+            )}
           </div>
         )
       case "video":
@@ -186,6 +211,8 @@ export function ProfileShowcase({
 
   const isAdmin = userEmail === "e.santiago.e1@gmail.com" || userEmail === "gabeasosa@gmail.com"
 
+  const isProfileOwnerAdmin = profileUserId === "F8YW5oQ8GIUhfkjAeShCQyvNMg83" || profileUserId === "H8lmJGjcrNOwWlUfTYviIgiPaV83"
+
   const getProfileLayout = () => {
     const profileBoxStyle = {
       backgroundColor: profileInfoColor,
@@ -213,6 +240,73 @@ export function ProfileShowcase({
         <span className="hidden sm:inline">{friends.length} Connections</span>
         <span className="sm:hidden">{friends.length}</span>
       </Button>
+    )
+
+    const socialLinks = (
+      <div className="flex flex-wrap gap-2 mt-3">
+        {githubUrl && (
+          <a
+            href={githubUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-background/10 hover:bg-background/20 transition-colors text-xs font-medium"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Github className="h-3 w-3" />
+            <span className="hidden sm:inline">GitHub</span>
+          </a>
+        )}
+        {linkedinUrl && (
+          <a
+            href={linkedinUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-background/10 hover:bg-background/20 transition-colors text-xs font-medium"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Linkedin className="h-3 w-3" />
+            <span className="hidden sm:inline">LinkedIn</span>
+          </a>
+        )}
+        {websiteUrl && (
+          <a
+            href={websiteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-background/10 hover:bg-background/20 transition-colors text-xs font-medium"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Globe className="h-3 w-3" />
+            <span className="hidden sm:inline">Website</span>
+          </a>
+        )}
+        {contactEmail && (
+          <a
+            href={`mailto:${contactEmail}`}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-background/10 hover:bg-background/20 transition-colors text-xs font-medium"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Mail className="h-3 w-3" />
+            <span className="hidden sm:inline">{contactEmail}</span>
+          </a>
+        )}
+        {phoneNumber && (
+          <a
+            href={`tel:${phoneNumber}`}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-background/10 hover:bg-background/20 transition-colors text-xs font-medium"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Phone className="h-3 w-3" />
+            <span className="hidden sm:inline">{phoneNumber}</span>
+          </a>
+        )}
+        {location && (
+          <div className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-background/10 text-xs font-medium">
+            <MapPin className="h-3 w-3" />
+            <span className="hidden sm:inline">{location}</span>
+          </div>
+        )}
+      </div>
     )
 
     switch (layout) {
@@ -308,38 +402,24 @@ export function ProfileShowcase({
                   <h1 className="text-xl sm:text-2xl md:text-3xl font-bold break-words">
                     {profileName || "Profile Showcase"}
                   </h1>
-                  {isAdmin && (
-                    <div className="relative">
-                      <style jsx>{`
-                        @keyframes rainbow-border {
-                          0% { border-color: #ff0000; }
-                          14% { border-color: #ff7f00; }
-                          28% { border-color: #ffff00; }
-                          42% { border-color: #00ff00; }
-                          57% { border-color: #0000ff; }
-                          71% { border-color: #4b0082; }
-                          85% { border-color: #9400d3; }
-                          100% { border-color: #ff0000; }
-                        }
-                        .rainbow-outline {
-                          animation: rainbow-border 3s linear infinite;
-                        }
-                      `}</style>
-                      <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-background/90 backdrop-blur-sm rounded-lg border-2 rainbow-outline shadow-lg">
-                        <Shield className="h-3 w-3 sm:h-4 sm:w-4 text-foreground" />
-                        <span className="text-[10px] sm:text-xs font-bold text-foreground tracking-wide">ADMIN</span>
-                      </div>
-                    </div>
+                  {isProfileOwnerAdmin && (
+                    <VerificationBadgesDisplay 
+                      badges={[{
+                        type: 'admin' as const,
+                        verified: true,
+                        metadata: {}
+                      }]}
+                      size="sm"
+                    />
                   )}
                   {verificationBadges && verificationBadges.length > 0 && (
-                    <div className="mb-2">
-                      <VerificationBadgesDisplay badges={verificationBadges} size="sm" />
-                    </div>
+                    <VerificationBadgesDisplay badges={verificationBadges} size="sm" />
                   )}
                 </div>
                 <p className="leading-relaxed text-sm sm:text-base break-words">
                   {profileDescription || "Welcome to my profile! Check out my showcase below."}
                 </p>
+                {socialLinks}
                 {connectionsButton && <div className="mt-2 sm:mt-3">{connectionsButton}</div>}
               </div>
               <div className="flex-shrink-0">
@@ -504,13 +584,47 @@ export function ProfileShowcase({
     if (!focusedItem) return
     if (e.key === "Escape") {
       setFocusedItem(null)
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault()
+      navigateToNextItem()
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault()
+      navigateToPreviousItem()
     }
+  }
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+    
+    const distance = touchStart - touchEnd
+    const minSwipeDistance = 50
+    
+    if (distance > minSwipeDistance) {
+      // Swiped left, go to next
+      navigateToNextItem()
+    } else if (distance < -minSwipeDistance) {
+      // Swiped right, go to previous
+      navigateToPreviousItem()
+    }
+    
+    setTouchStart(null)
+    setTouchEnd(null)
   }
 
   useEffect(() => {
     if (focusedItem) {
-      window.addEventListener("keydown", handleKeyDown)
-      return () => window.removeEventListener("keydown", handleKeyDown)
+      const handleKey = (e: KeyboardEvent) => handleKeyDown(e)
+      window.addEventListener("keydown", handleKey)
+      return () => window.removeEventListener("keydown", handleKey)
     }
   }, [focusedItem, items])
 
@@ -667,7 +781,12 @@ export function ProfileShowcase({
       </Dialog>
 
       <Dialog open={!!focusedItem} onOpenChange={() => setFocusedItem(null)}>
-        <DialogContent className="max-w-[75vw] max-h-[95vh] overflow-hidden p-0">
+        <DialogContent 
+          className="max-w-[75vw] max-h-[95vh] overflow-hidden p-0"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           {focusedItem && (
             <div className="p-12 overflow-y-auto max-h-[95vh] relative">
               <div className="mb-6">

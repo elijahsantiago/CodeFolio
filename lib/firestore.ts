@@ -16,6 +16,7 @@ import {
   limit as firebaseLimit,
 } from "firebase/firestore"
 import { db, isFirebaseConfigured } from "./firebase"
+import { auth } from "./firebase" // Assuming auth is exported from ./firebase
 
 // Define Post and Comment interfaces here
 export interface Post {
@@ -40,7 +41,6 @@ export interface Comment {
   userName: string
   userPicture: string
   content: string
-  parentCommentId?: string
   createdAt: Timestamp
 }
 
@@ -82,16 +82,24 @@ export interface UserProfile {
   sentConnectionRequests?: ConnectionRequest[] // Requests sent by this user
   receivedConnectionRequests?: ConnectionRequest[] // Requests received by this user
   verificationBadges?: VerificationBadge[]
+  // Social and contact info
+  githubUrl?: string
+  linkedinUrl?: string
+  websiteUrl?: string
+  contactEmail?: string
+  phoneNumber?: string
+  location?: string
   createdAt: Timestamp
   updatedAt: Timestamp
   searchKeywords: string[]
+  bannerImage?: string // Added bannerImage
 }
 
 export interface VerificationBadge {
   type: "student" | "portfolio" | "certification"
   verified: boolean
-  verifiedAt?: Timestamp
-  expiresAt?: Timestamp
+  verifiedAt?: Date
+  expiresAt?: Date
   metadata?: {
     schoolEmail?: string
     schoolName?: string
@@ -109,6 +117,7 @@ export interface ShowcaseItem {
   title: string
   description: string
   imageUrl?: string // Added imageUrl to ShowcaseItem for trending profiles
+  size?: "normal" | "long" // Added size property for long boxes
 }
 
 export interface Connection {
@@ -220,7 +229,7 @@ export async function checkAndUpdatePortfolioVerification(userId: string): Promi
         const newBadge: VerificationBadge = {
           type: "portfolio",
           verified: true,
-          verifiedAt: serverTimestamp() as Timestamp,
+          verifiedAt: new Date(),
         }
         await updateDoc(profileRef, {
           verificationBadges: [...currentBadges, newBadge],
@@ -267,8 +276,34 @@ export async function saveUserProfile(userId: string, profileData: Partial<UserP
     // Generate search keywords from profile name and description
     const searchKeywords = generateSearchKeywords(profileData.profileName || "", profileData.profileDescription || "")
 
+    const sanitizeData = (data: any): any => {
+      if (data === null || data === undefined) {
+        return null
+      }
+
+      if (Array.isArray(data)) {
+        return data.map(item => sanitizeData(item)).filter(item => item !== null)
+      }
+
+      if (typeof data === 'object' && !(data instanceof Date)) {
+        const sanitized: any = {}
+        for (const [key, value] of Object.entries(data)) {
+          if (value !== undefined && value !== null) {
+            sanitized[key] = sanitizeData(value)
+          }
+        }
+        // If after sanitization the object is empty, return null to remove it
+        return Object.keys(sanitized).length > 0 ? sanitized : null
+      }
+
+      return data
+    }
+
+    const sanitizedProfileData = sanitizeData(profileData)
+
+
     const dataToSave = {
-      ...profileData,
+      ...sanitizedProfileData,
       userId,
       searchKeywords,
       updatedAt: serverTimestamp(),
@@ -1087,7 +1122,6 @@ export async function respondToConnectionRequest(
   try {
     console.log("[v0] Responding to connection request:", requestId, accept ? "accept" : "reject")
 
-    // Get current user's profile
     const currentProfileRef = doc(db, "profiles", currentUserId)
     const currentProfileSnap = await getDoc(currentProfileRef)
 
@@ -1099,7 +1133,6 @@ export async function respondToConnectionRequest(
     const currentProfile = currentProfileSnap.data() as UserProfile
     const receivedRequests = currentProfile.receivedConnectionRequests || []
 
-    // Find the request
     const request = receivedRequests.find((req) => req.id === requestId)
 
     if (!request) {
@@ -1109,7 +1142,6 @@ export async function respondToConnectionRequest(
 
     if (accept) {
       const existingConnections = currentProfile.connections || []
-      console.log("[v0] Current user existing connections count:", existingConnections.length)
 
       const newConnection: Connection = {
         id: request.fromUserId,
@@ -1120,21 +1152,32 @@ export async function respondToConnectionRequest(
         connectedAt: Date.now(),
       }
 
-      // Update current user's profile - add connection and remove request
       const updatedReceivedRequests = receivedRequests.filter((req) => req.id !== requestId)
-      const acceptedRequest = { ...request, status: "accepted" as const, respondedAt: Date.now() }
-
-      console.log("[v0] Updating current user profile - adding connection to:", request.fromUserName)
 
       await updateDoc(currentProfileRef, {
         connections: [...existingConnections, newConnection],
-        receivedConnectionRequests: updatedReceivedRequests.map((req) =>
-          req.id === requestId ? acceptedRequest : req,
-        ),
+        receivedConnectionRequests: updatedReceivedRequests,
         updatedAt: serverTimestamp(),
       })
 
-      console.log("[v0] Current user profile updated - new connections count:", existingConnections.length + 1)
+      try {
+        const connectionsRef = collection(db, "userConnections")
+        const currentUserConnectionDoc = doc(connectionsRef, `${currentUserId}_${request.fromUserId}`)
+
+        await setDoc(currentUserConnectionDoc, {
+          userId: currentUserId,
+          connectedToId: request.fromUserId,
+          connectedToName: request.fromUserName,
+          connectedToPicture: request.fromUserPicture,
+          connectedToEmail: request.fromUserEmail,
+          connectedAt: Date.now(),
+          requestId: requestId,
+        })
+
+        console.log("[v0] Connection document created for current user")
+      } catch (connectionDocError) {
+        console.warn("[v0] Could not create connection document:", connectionDocError)
+      }
 
       try {
         const requesterProfileRef = doc(db, "profiles", request.fromUserId)
@@ -1144,8 +1187,6 @@ export async function respondToConnectionRequest(
           const requesterData = requesterProfileSnap.data() as UserProfile
           const requesterConnections = requesterData.connections || []
           const requesterSentRequests = requesterData.sentConnectionRequests || []
-
-          console.log("[v0] Requester existing connections count:", requesterConnections.length)
 
           const reciprocalConnection: Connection = {
             id: currentUserId,
@@ -1157,10 +1198,8 @@ export async function respondToConnectionRequest(
           }
 
           const updatedSentRequests = requesterSentRequests.map((req) =>
-            req.id === requestId ? { ...req, status: "accepted" as const, respondedAt: Date.now() } : req,
+            req.id === requestId ? { ...req, status: "accepted" as const } : req
           )
-
-          console.log("[v0] Updating requester profile - adding connection to:", currentProfile.profileName)
 
           await updateDoc(requesterProfileRef, {
             connections: [...requesterConnections, reciprocalConnection],
@@ -1171,15 +1210,7 @@ export async function respondToConnectionRequest(
           console.log("[v0] Requester profile updated successfully")
         }
       } catch (requesterError: any) {
-        if (requesterError?.code === "permission-denied") {
-          console.warn("[v0] Could not update requester's profile due to permissions")
-          console.warn("[v0] Connection accepted on your side. The requester will see the connection when they sync.")
-          console.warn(
-            "[v0] To enable automatic two-way connections, update Firestore security rules (see FIREBASE_CONNECTION_FIX.md)",
-          )
-        } else {
-          console.error("[v0] Error updating requester profile:", requesterError)
-        }
+        console.warn("[v0] Could not update requester profile (will sync on next login):", requesterError?.message)
       }
     } else {
       const updatedReceivedRequests = receivedRequests.filter((req) => req.id !== requestId)
@@ -1201,16 +1232,10 @@ export async function respondToConnectionRequest(
             sentConnectionRequests: updatedSentRequests,
             updatedAt: serverTimestamp(),
           })
-
-          console.log("[v0] Request removed from requester's sent requests")
         }
       } catch (requesterError: any) {
-        if (requesterError?.code === "permission-denied") {
-          console.warn("[v0] Could not update requester's profile due to permissions")
-        }
+        console.warn("[v0] Could not update requester profile:", requesterError?.message)
       }
-
-      console.log("[v0] Connection request rejected")
     }
 
     console.log("[v0] Connection request responded successfully")
@@ -1226,9 +1251,15 @@ export async function respondToConnectionRequest(
   }
 }
 
-export async function syncAcceptedConnections(userId: string): Promise<number> {
+export async function syncAcceptedConnections(userId: string): Promise<void> {
   if (!isFirebaseConfigured() || !db) {
-    return 0
+    console.warn("[v0] Firebase not configured, skipping connection sync")
+    return
+  }
+
+  if (!auth?.currentUser || auth.currentUser.uid !== userId) {
+    console.warn("[v0] Not authenticated or not the current user, skipping connection sync")
+    return
   }
 
   try {
@@ -1238,63 +1269,68 @@ export async function syncAcceptedConnections(userId: string): Promise<number> {
     const profileSnap = await getDoc(profileRef)
 
     if (!profileSnap.exists()) {
-      return 0
+      console.warn("[v0] Profile not found for sync")
+      return
     }
 
     const profile = profileSnap.data() as UserProfile
-    const sentRequests = profile.sentConnectionRequests || []
-    const existingConnections = profile.connections || []
-    const existingConnectionIds = new Set(existingConnections.map((c) => c.userId))
+    const currentConnections = profile.connections || []
+    const currentConnectionIds = new Set(currentConnections.map((conn) => conn.id))
 
-    const acceptedRequests = sentRequests.filter(
-      (req) => req.status === "accepted" && !existingConnectionIds.has(req.toUserId),
-    )
-
-    if (acceptedRequests.length === 0) {
-      console.log("[v0] No new accepted connections to sync")
-      return 0
-    }
+    // Query connection documents for this user
+    const connectionsRef = collection(db, "userConnections")
+    const q = query(connectionsRef, where("userId", "==", userId))
+    const connectionsSnap = await getDocs(q)
 
     const newConnections: Connection[] = []
-    for (const req of acceptedRequests) {
-      try {
-        const targetProfileRef = doc(db, "profiles", req.toUserId)
-        const targetProfileSnap = await getDoc(targetProfileRef)
 
-        if (targetProfileSnap.exists()) {
-          const targetProfile = targetProfileSnap.data() as UserProfile
-          newConnections.push({
-            id: req.toUserId,
-            userId: req.toUserId,
-            profileName: targetProfile.profileName,
-            profilePicture: targetProfile.profilePicture,
-            email: targetProfile.email,
-            connectedAt: req.respondedAt || Date.now(),
-          })
-        }
-      } catch (error) {
-        console.warn("[v0] Could not fetch profile for accepted connection:", req.toUserId)
+    connectionsSnap.forEach((docSnap) => {
+      const connectionData = docSnap.data()
+      if (!currentConnectionIds.has(connectionData.connectedToId)) {
+        newConnections.push({
+          id: connectionData.connectedToId,
+          userId: connectionData.connectedToId,
+          profileName: connectionData.connectedToName,
+          profilePicture: connectionData.connectedToPicture,
+          email: connectionData.connectedToEmail,
+          connectedAt: connectionData.connectedAt,
+        })
       }
-    }
+    })
 
     if (newConnections.length > 0) {
-      const updatedSentRequests = sentRequests.filter((req) => req.status !== "accepted")
+      console.log("[v0] Found", newConnections.length, "new connections to sync")
 
-      await updateDoc(profileRef, {
-        connections: [...existingConnections, ...newConnections],
-        sentConnectionRequests: updatedSentRequests,
-        updatedAt: serverTimestamp(),
-      })
+      try {
+        // Also clean up sent requests that were accepted
+        const sentRequests = profile.sentConnectionRequests || []
+        const newConnectionIds = new Set(newConnections.map((conn) => conn.id))
+        const updatedSentRequests = sentRequests.filter((req) => !newConnectionIds.has(req.toUserId))
 
-      console.log("[v0] Synced", newConnections.length, "accepted connections")
+        await updateDoc(profileRef, {
+          connections: [...currentConnections, ...newConnections],
+          sentConnectionRequests: updatedSentRequests,
+          updatedAt: serverTimestamp(),
+        })
+
+        console.log("[v0] Successfully synced", newConnections.length, "new connections")
+      } catch (updateError: any) {
+        console.warn(
+          "[v0] Could not update profile with new connections (will retry on next sync):",
+          updateError.message
+        )
+        console.warn(
+          "[v0] Make sure your Firestore security rules allow users to update their own profiles"
+        )
+      }
+    } else {
+      console.log("[v0] No new accepted connections to sync")
     }
-
-    return newConnections.length
-  } catch (error) {
-    console.error("[v0] Error syncing accepted connections:", error)
-    return 0
+  } catch (error: any) {
+    console.warn("[v0] Connection sync warning:", error.message)
   }
 }
+
 
 export async function cancelConnectionRequest(currentUserId: string, targetUserId: string): Promise<void> {
   if (!isFirebaseConfigured()) {
@@ -2022,6 +2058,11 @@ export async function getUnreadNotificationCount(userId: string): Promise<number
     return 0
   }
 
+  if (!auth?.currentUser || auth.currentUser.uid !== userId) {
+    console.warn("[v0] Cannot get notification count - user not authenticated or ID mismatch")
+    return 0
+  }
+
   try {
     const notificationsRef = collection(db, "notifications")
     const q = query(notificationsRef, where("toUserId", "==", userId), where("read", "==", false))
@@ -2029,7 +2070,12 @@ export async function getUnreadNotificationCount(userId: string): Promise<number
     const querySnapshot = await getDocs(q)
     return querySnapshot.size
   } catch (error: any) {
-    console.error("[v0] Error getting unread notification count:", error)
+    // Silently handle permission errors
+    if (error.code === "permission-denied") {
+      console.warn("[v0] Notification query permission denied - returning 0")
+      return 0
+    }
+    console.error("[v0] Error getting unread notification count:", error.message || error)
     return 0
   }
 }
@@ -2391,5 +2437,101 @@ export async function getRecommendedPosts(userId: string, maxResults = 10): Prom
   } catch (error) {
     console.error("[v0] Error getting recommended posts:", error)
     return []
+  }
+}
+
+export async function adminResetVerificationBadges(adminEmail: string, targetUserId: string): Promise<void> {
+  if (adminEmail !== "e.santiago.e1@gmail.com" && adminEmail !== "gabeasosa@gmail.com") {
+    throw new Error("Unauthorized: Admin access required")
+  }
+
+  if (!isFirebaseConfigured()) {
+    console.warn("[v0] Firebase not configured, skipping badge reset")
+    return
+  }
+
+  if (!db) {
+    console.warn("[v0] Firestore database not initialized")
+    return
+  }
+
+  try {
+    console.log("[v0] Admin resetting verification badges for user:", targetUserId)
+    const profileRef = doc(db, "profiles", targetUserId)
+    await updateDoc(profileRef, {
+      verificationBadges: [],
+      updatedAt: serverTimestamp(),
+    })
+    console.log("[v0] Verification badges reset successfully by admin")
+  } catch (error: any) {
+    console.error("[v0] Error resetting verification badges:", error)
+    if (error?.code === "permission-denied") {
+      throw new Error(
+        "Admin permissions not configured in Firestore. Please update your Firestore security rules to enable admin functionality.",
+      )
+    }
+    throw error
+  }
+}
+
+export async function adminRevertProfileToDefault(adminEmail: string, targetUserId: string): Promise<void> {
+  if (adminEmail !== "e.santiago.e1@gmail.com" && adminEmail !== "gabeasosa@gmail.com") {
+    throw new Error("Unauthorized: Admin access required")
+  }
+
+  if (!isFirebaseConfigured()) {
+    console.warn("[v0] Firebase not configured, skipping profile revert")
+    return
+  }
+
+  if (!db) {
+    console.warn("[v0] Firestore database not initialized")
+    return
+  }
+
+  try {
+    console.log("[v0] Admin reverting profile to default for user:", targetUserId)
+    const profileRef = doc(db, "profiles", targetUserId)
+    const profileSnap = await getDoc(profileRef)
+    
+    if (!profileSnap.exists()) {
+      throw new Error("Profile not found")
+    }
+    
+    const currentProfile = profileSnap.data() as UserProfile
+    
+    // Keep essential data, reset everything else to defaults
+    await updateDoc(profileRef, {
+      showcaseItems: [],
+      layout: "default",
+      backgroundColor: "#ffffff",
+      backgroundImage: "",
+      contentBoxColor: "#ffffff",
+      contentBoxTrimColor: "#6b7280",
+      profileInfoColor: "#ffffff",
+      profileInfoTrimColor: "#6b7280",
+      textColor: "#000000",
+      theme: "light-business",
+      resumeFile: "",
+      bannerImage: "",
+      profileDescription: "",
+      githubUrl: "",
+      linkedinUrl: "",
+      websiteUrl: "",
+      contactEmail: "",
+      phoneNumber: "",
+      location: "",
+      verificationBadges: [],
+      updatedAt: serverTimestamp(),
+    })
+    console.log("[v0] Profile reverted to default successfully by admin")
+  } catch (error: any) {
+    console.error("[v0] Error reverting profile:", error)
+    if (error?.code === "permission-denied") {
+      throw new Error(
+        "Admin permissions not configured in Firestore. Please update your Firestore security rules to enable admin functionality.",
+      )
+    }
+    throw error
   }
 }

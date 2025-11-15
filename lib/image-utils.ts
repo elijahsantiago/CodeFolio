@@ -18,11 +18,12 @@ export async function compressImage(file: File, options: ImageCompressionOptions
         // Calculate base64 size in KB
         const sizeKB = (result.length * 0.75) / 1024
 
-        // Firestore has a 1MB document limit. Base64 GIFs should be max 200KB to leave room for other fields
-        if (sizeKB > 200) {
+        // Allow GIFs up to 1.5MB in base64 format (about 1.1MB actual)
+        // Note: Very large GIFs may cause Firestore document size issues
+        if (sizeKB > 1500) {
           reject(
             new Error(
-              `GIF is too large (${Math.round(sizeKB)}KB). Please use a GIF smaller than 200KB to fit within Firestore limits.`,
+              `GIF is too large (${Math.round(sizeKB)}KB). Please use a GIF smaller than 1.5MB to fit within storage limits.`,
             ),
           )
         } else {
@@ -87,22 +88,63 @@ export function validateImageFile(file: File): { valid: boolean; error?: string 
     return { valid: false, error: "File must be an image" }
   }
 
-  const maxSizeMB = file.type === "image/gif" ? 0.15 : 10 // 150KB for GIFs, 10MB for other images
+  const maxSizeMB = file.type === "image/gif" ? 2 : 10 // 2MB for GIFs, 10MB for other images
   if (file.size > maxSizeMB * 1024 * 1024) {
     return {
       valid: false,
-      error: `${file.type === "image/gif" ? "GIF" : "Image"} must be smaller than ${file.type === "image/gif" ? "150KB" : "10MB"}`,
+      error: `${file.type === "image/gif" ? "GIF" : "Image"} must be smaller than ${file.type === "image/gif" ? "2MB" : "10MB"}`,
     }
   }
 
   return { valid: true }
 }
 
-export async function processImageUpload(file: File, options: ImageCompressionOptions = {}): Promise<string> {
+export function shouldUseBlobStorage(file: File): boolean {
+  // Use Blob storage for files larger than 300KB to avoid Firestore document size limits
+  // GIFs especially benefit from Blob storage since they can't be compressed
+  const sizeKB = file.size / 1024
+  
+  if (file.type === "image/gif" && sizeKB > 300) {
+    return true
+  }
+  
+  // For other images, use Blob if over 500KB
+  if (file.type.startsWith("image/") && sizeKB > 500) {
+    return true
+  }
+  
+  return false
+}
+
+export async function uploadToBlob(file: File, userId: string): Promise<string> {
+  const formData = new FormData()
+  formData.append("file", file)
+  formData.append("userId", userId)
+  
+  const response = await fetch("/api/upload-showcase-item", {
+    method: "POST",
+    body: formData,
+  })
+  
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || "Failed to upload to Blob storage")
+  }
+  
+  const data = await response.json()
+  return data.url
+}
+
+export async function processImageUpload(file: File, options: ImageCompressionOptions = {}, userId: string): Promise<string> {
   // Validate the file first
   const validation = validateImageFile(file)
   if (!validation.valid) {
     throw new Error(validation.error)
+  }
+
+  // Check if the file should use Blob storage
+  if (shouldUseBlobStorage(file)) {
+    return uploadToBlob(file, userId)
   }
 
   // Compress the image
@@ -110,10 +152,10 @@ export async function processImageUpload(file: File, options: ImageCompressionOp
     const compressedImage = await compressImage(file, options)
 
     const finalSizeKB = (compressedImage.length * 0.75) / 1024
-    const maxSize = file.type === "image/gif" ? 200 : 800 // 200KB for GIFs, 800KB for other images
+    const maxSize = file.type === "image/gif" ? 1500 : 1000
     if (finalSizeKB > maxSize) {
       throw new Error(
-        `${file.type === "image/gif" ? "GIF" : "Compressed image"} is still too large (${Math.round(finalSizeKB)}KB). Please use a smaller ${file.type === "image/gif" ? "GIF (max 150KB)" : "image"}.`,
+        `${file.type === "image/gif" ? "GIF" : "Compressed image"} is still too large (${Math.round(finalSizeKB)}KB). Please use a smaller ${file.type === "image/gif" ? "GIF" : "image"}.`,
       )
     }
 

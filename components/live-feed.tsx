@@ -8,10 +8,10 @@ import { CreatePostForm } from "@/components/create-post-form"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Loader2, RefreshCw, Search, X, Plus, Minus } from "lucide-react"
+import { Loader2, RefreshCw, Search, X, Plus, Minus } from 'lucide-react'
 import { getPosts, searchPosts, getTrendingPosts, getRecommendedPosts, type Post } from "@/lib/firestore"
 import { useAuth } from "@/hooks/use-auth"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 
 interface LiveFeedProps {
   highlightPostId?: string | null
@@ -253,22 +253,22 @@ export function LiveFeed({ highlightPostId, onPostHighlighted }: LiveFeedProps) 
         onValueChange={(value) => setActiveTab(value as "all" | "trending" | "network")}
         className="w-full"
       >
-        <TabsList className="grid w-full grid-cols-3 bg-card/50 backdrop-blur-sm p-0.5 sm:p-1 rounded-lg sm:rounded-xl border shadow-sm">
+        <TabsList className="grid w-full grid-cols-3 bg-muted/50 backdrop-blur-sm p-1 rounded-xl border h-auto">
           <TabsTrigger
             value="all"
-            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:bg-transparent data-[state=inactive]:text-muted-foreground text-xs sm:text-sm px-2 sm:px-3 py-2 rounded-lg transition-all"
           >
             All
           </TabsTrigger>
           <TabsTrigger
             value="trending"
-            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:bg-transparent data-[state=inactive]:text-muted-foreground text-xs sm:text-sm px-2 sm:px-3 py-2 rounded-lg transition-all"
           >
             Trending
           </TabsTrigger>
           <TabsTrigger
             value="network"
-            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:bg-transparent data-[state=inactive]:text-muted-foreground text-xs sm:text-sm px-2 sm:px-3 py-2 rounded-lg transition-all"
           >
             Network
           </TabsTrigger>

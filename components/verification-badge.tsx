@@ -1,14 +1,32 @@
 "use client"
 
-import { GraduationCap, CheckCircle2, Award } from "lucide-react"
+import { GraduationCap, CheckCircle2, Award, Shield } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
+const INSTITUTION_NAMES: Record<string, string> = {
+  'ggc.edu': 'Georgia Gwinnett College',
+  'ksu.edu': 'Kennesaw State University',
+  'uga.edu': 'University of Georgia',
+  'gsu.edu': 'Georgia State University',
+  'gatech.edu': 'Georgia Institute of Technology',
+  'emory.edu': 'Emory University',
+  'spelman.edu': 'Spelman College',
+  'morehouse.edu': 'Morehouse College',
+  // Add more institutions as needed
+}
+
+function getInstitutionName(domain: string): string {
+  const lowerDomain = domain.toLowerCase()
+  return INSTITUTION_NAMES[lowerDomain] || domain.split('.')[0].toUpperCase()
+}
+
 interface VerificationBadgeProps {
-  type: "student" | "portfolio" | "certification"
+  type: "student" | "portfolio" | "certification" | "admin"
   verified: boolean
   metadata?: {
     schoolName?: string
+    schoolDomain?: string
     certificationName?: string
   }
   size?: "sm" | "md" | "lg"
@@ -30,14 +48,17 @@ export function VerificationBadge({
     lg: "h-6 w-6",
   }
 
+  const institutionName = metadata?.schoolName || 
+    (metadata?.schoolDomain ? getInstitutionName(metadata.schoolDomain) : undefined)
+
   const badges = {
     student: {
       icon: GraduationCap,
       label: "Student Verified",
       color: "text-blue-600",
       bg: "bg-blue-50 dark:bg-blue-950",
-      description: metadata?.schoolName
-        ? `Verified student at ${metadata.schoolName}`
+      description: institutionName
+        ? `Verified student at ${institutionName}`
         : "Verified student with school email",
     },
     portfolio: {
@@ -54,13 +75,21 @@ export function VerificationBadge({
       bg: "bg-purple-50 dark:bg-purple-950",
       description: metadata?.certificationName ? `Certified: ${metadata.certificationName}` : "Verified certification",
     },
+    admin: {
+      icon: Shield,
+      label: "Admin",
+      color: "text-red-600",
+      bg: "bg-red-50 dark:bg-red-950",
+      description: "Platform administrator with elevated permissions",
+    },
   }
 
   const badge = badges[type]
   const Icon = badge.icon
 
   const BadgeContent = (
-    <div className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1", badge.bg)}>
+    <div className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 border", badge.bg, 
+      type === "admin" ? "border-red-200 dark:border-red-800" : "border-transparent")}>
       <Icon className={cn(sizeClasses[size], badge.color)} />
       {showLabel && <span className={cn("text-xs font-medium", badge.color)}>{badge.label}</span>}
     </div>
@@ -81,10 +110,11 @@ export function VerificationBadge({
 
 interface VerificationBadgesDisplayProps {
   badges?: Array<{
-    type: "student" | "portfolio" | "certification"
+    type: "student" | "portfolio" | "certification" | "admin"
     verified: boolean
     metadata?: {
       schoolName?: string
+      schoolDomain?: string
       certificationName?: string
     }
   }>

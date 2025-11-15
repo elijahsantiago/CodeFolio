@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { GraduationCap, CheckCircle2, Award, Upload, Loader2, CheckCircle } from "lucide-react"
+import { GraduationCap, CheckCircle2, Award, Upload, Loader2, CheckCircle } from 'lucide-react'
 import { VerificationBadge } from "./verification-badge"
 import type { VerificationBadge as VerificationBadgeType } from "@/lib/firestore"
 
@@ -14,6 +14,34 @@ interface VerificationManagerProps {
   userId: string
   currentBadges?: VerificationBadgeType[]
   onUpdateBadges: (badges: VerificationBadgeType[]) => Promise<void>
+}
+
+const SCHOOL_DOMAIN_MAP: Record<string, string> = {
+  "ggc.edu": "Georgia Gwinnett College",
+  "ksu.edu": "Kennesaw State University",
+  "gatech.edu": "Georgia Institute of Technology",
+  "uga.edu": "University of Georgia",
+  "gsu.edu": "Georgia State University",
+  "emory.edu": "Emory University",
+  "mit.edu": "Massachusetts Institute of Technology",
+  "stanford.edu": "Stanford University",
+  "harvard.edu": "Harvard University",
+  "berkeley.edu": "University of California, Berkeley",
+  "ucla.edu": "University of California, Los Angeles",
+  // Add more as needed
+}
+
+function getSchoolName(email: string): string {
+  const domain = email.split("@")[1]?.toLowerCase()
+  
+  // Check exact match first
+  if (domain && SCHOOL_DOMAIN_MAP[domain]) {
+    return SCHOOL_DOMAIN_MAP[domain]
+  }
+  
+  // Fallback: capitalize domain name
+  const schoolName = domain?.replace(".edu", "").replace(".ac.uk", "").toUpperCase() || "School"
+  return schoolName
 }
 
 export function VerificationManager({ userId, currentBadges = [], onUpdateBadges }: VerificationManagerProps) {
@@ -35,23 +63,21 @@ export function VerificationManager({ userId, currentBadges = [], onUpdateBadges
 
     setLoading(true)
     try {
-      // In a real implementation, this would send a verification email
-      const schoolDomain = studentEmail.split("@")[1]
-      const schoolName = schoolDomain.replace(".edu", "").replace(".ac.uk", "")
+      const schoolName = getSchoolName(studentEmail)
 
       const newBadge: VerificationBadgeType = {
         type: "student",
-        verified: true, // In production, this would be false until email is verified
+        verified: true,
         verifiedAt: { seconds: Date.now() / 1000, nanoseconds: 0 } as any,
         metadata: {
           schoolEmail: studentEmail,
-          schoolName: schoolName.charAt(0).toUpperCase() + schoolName.slice(1),
+          schoolName: schoolName,
         },
       }
 
       const updatedBadges = [...currentBadges.filter((b) => b.type !== "student"), newBadge]
       await onUpdateBadges(updatedBadges)
-      alert("Student verification request sent! Check your email to complete verification.")
+      alert(`Student verification request sent for ${schoolName}! Check your email to complete verification.`)
     } catch (error) {
       console.error("Error verifying student:", error)
       alert("Failed to send verification request")

@@ -11,8 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Plus, GripVertical, Edit, Trash2, ImageIcon, Play, Upload, Type, AlertCircle } from "lucide-react"
-import { processImageUpload } from "@/lib/image-utils"
+import { Plus, GripVertical, Edit, Trash2, ImageIcon, Play, Upload, Type, AlertCircle } from 'lucide-react'
+import { processImageUpload, shouldUseBlobStorage, uploadToBlob } from "@/lib/image-utils"
 import { getThemeColors } from "@/lib/color-utils"
 
 const DragDropContext = dynamic(() => import("@hello-pangea/dnd").then((mod) => mod.DragDropContext), {
@@ -66,18 +66,30 @@ interface ShowcaseEditorProps {
   profileInfoColor?: string
   onProfileInfoColorChange?: (color: string) => void
   profileInfoTrimColor?: string
-  onProfileInfoTrimColorChange?: (color: string) => void // Added missing prop definition
+  onProfileInfoTrimColorChange?: (color: string) => void
   friends?: Friend[]
   onFriendsChange?: (friends: Friend[]) => void
   theme?: "light-business" | "dark-business" | "business-casual"
   onThemeChange?: (theme: "light-business" | "dark-business" | "business-casual") => void
   resumeFile?: string
   onResumeFileChange?: (file: string) => void
-  userEmail?: string // Added userEmail prop
-  textColor?: string // Added textColor prop
+  userEmail?: string
+  textColor?: string
   onTextColorChange?: (color: string) => void
   bannerImage?: string
   onBannerImageChange?: (image: string) => void
+  githubUrl?: string
+  onGithubUrlChange?: (url: string) => void
+  linkedinUrl?: string
+  onLinkedinUrlChange?: (url: string) => void
+  websiteUrl?: string
+  onWebsiteUrlChange?: (url: string) => void
+  contactEmail?: string
+  onContactEmailChange?: (email: string) => void
+  phoneNumber?: string
+  onPhoneNumberChange?: (phone: string) => void
+  location?: string
+  onLocationChange?: (location: string) => void
 }
 
 export function ShowcaseEditor({
@@ -100,18 +112,30 @@ export function ShowcaseEditor({
   profileInfoColor = "#1a1a1a",
   onProfileInfoColorChange,
   profileInfoTrimColor = "#22c55e",
-  onProfileInfoTrimColorChange, // Added missing parameter
+  onProfileInfoTrimColorChange,
   friends = [],
   onFriendsChange,
   theme = "light-business",
   onThemeChange,
   resumeFile = "",
   onResumeFileChange,
-  userEmail = "", // Added userEmail parameter
-  textColor = "#ffffff", // Default text color
+  userEmail = "",
+  textColor = "#ffffff",
   onTextColorChange,
   bannerImage,
   onBannerImageChange,
+  githubUrl = "",
+  onGithubUrlChange,
+  linkedinUrl = "",
+  onLinkedinUrlChange,
+  websiteUrl = "",
+  onWebsiteUrlChange,
+  contactEmail = "",
+  onContactEmailChange,
+  phoneNumber = "",
+  onPhoneNumberChange,
+  location = "",
+  onLocationChange,
 }: ShowcaseEditorProps) {
   const [editingItem, setEditingItem] = useState<ShowcaseItem | null>(null)
   const [editingItemType, setEditingItemType] = useState<"image" | "video" | "text">("image")
@@ -125,7 +149,7 @@ export function ShowcaseEditor({
   const [uploadedBackgroundImage, setUploadedBackgroundImage] = useState<string | null>(null)
   const [uploadedBannerImage, setUploadedBannerImage] = useState<string | null>(null)
   const [isMainEditorOpen, setIsMainEditorOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<"profile" | "showcase" | "resume" | "appearance" | "layout">("profile")
+  const [activeTab, setActiveTab] = useState<"profile" | "showcase" | "resume" | "appearance" | "layout" | "contact">("profile")
 
   const [savedPresets, setSavedPresets] = useState<any[]>([])
 
@@ -199,7 +223,18 @@ export function ShowcaseEditor({
     try {
       let processedFile: string
 
-      if (file.type.startsWith("image/") || file.type === "image/gif") {
+      if ((file.type.startsWith("image/") || file.type === "image/gif") && shouldUseBlobStorage(file)) {
+        console.log(`[v0] File size exceeds safe limit for Firestore, uploading to Blob storage`)
+        
+        // Need userId - get from userEmail prop if available
+        if (!userEmail) {
+          throw new Error("User authentication required to upload large files")
+        }
+        
+        // Upload to Blob storage and get URL
+        processedFile = await uploadToBlob(file, userEmail)
+        console.log(`[v0] File uploaded to Blob storage: ${processedFile}`)
+      } else if (file.type.startsWith("image/") || file.type === "image/gif") {
         // Determine compression settings based on use case
         const compressionOptions = {
           profile: { maxWidth: 400, maxHeight: 400, quality: 0.8, maxSizeKB: 200 },
@@ -455,6 +490,7 @@ export function ShowcaseEditor({
                   <nav className="space-y-2">
                     {[
                       { id: "profile", label: "Profile Info", icon: "👤" },
+                      { id: "contact", label: "Contact & Social", icon: "📧" },
                       { id: "showcase", label: "Showcase Items", icon: "🎮" },
                       { id: "resume", label: "Resume", icon: "📄" },
                       { id: "appearance", label: "Appearance", icon: "🎨" },
@@ -1117,6 +1153,121 @@ export function ShowcaseEditor({
                           <p className="text-sm">Save your current profile as a preset to reuse it later</p>
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {/* CONTACT AND SOCIAL TAB CONTENT */}
+                  {activeTab === "contact" && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold">Contact Information & Social Links</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Add your professional links and contact information to display on your portfolio
+                      </p>
+                      
+                      <div className="space-y-4 mt-6">
+                        <div>
+                          <Label htmlFor="githubUrl">GitHub Profile</Label>
+                          <Input
+                            id="githubUrl"
+                            name="githubUrl"
+                            type="url"
+                            value={githubUrl}
+                            onChange={(e) => onGithubUrlChange?.(e.target.value)}
+                            placeholder="https://github.com/username"
+                            className="text-foreground"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Your GitHub profile URL
+                          </p>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="linkedinUrl">LinkedIn Profile</Label>
+                          <Input
+                            id="linkedinUrl"
+                            name="linkedinUrl"
+                            type="url"
+                            value={linkedinUrl}
+                            onChange={(e) => onLinkedinUrlChange?.(e.target.value)}
+                            placeholder="https://linkedin.com/in/username"
+                            className="text-foreground"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Your LinkedIn profile URL
+                          </p>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="websiteUrl">Personal Website</Label>
+                          <Input
+                            id="websiteUrl"
+                            name="websiteUrl"
+                            type="url"
+                            value={websiteUrl}
+                            onChange={(e) => onWebsiteUrlChange?.(e.target.value)}
+                            placeholder="https://yourwebsite.com"
+                            className="text-foreground"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Your personal website or portfolio URL
+                          </p>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="contactEmail">Contact Email</Label>
+                          <Input
+                            id="contactEmail"
+                            name="contactEmail"
+                            type="email"
+                            value={contactEmail}
+                            onChange={(e) => onContactEmailChange?.(e.target.value)}
+                            placeholder="contact@email.com"
+                            className="text-foreground"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Professional email for contact (can be different from login email)
+                          </p>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="phoneNumber">Phone Number</Label>
+                          <Input
+                            id="phoneNumber"
+                            name="phoneNumber"
+                            type="tel"
+                            value={phoneNumber}
+                            onChange={(e) => onPhoneNumberChange?.(e.target.value)}
+                            placeholder="+1 (555) 123-4567"
+                            className="text-foreground"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Optional: Your contact phone number
+                          </p>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="location">Location</Label>
+                          <Input
+                            id="location"
+                            name="location"
+                            type="text"
+                            value={location}
+                            onChange={(e) => onLocationChange?.(e.target.value)}
+                            placeholder="San Francisco, CA"
+                            className="text-foreground"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Your city and state/country
+                          </p>
+                        </div>
+
+                        <div className="pt-4 border-t">
+                          <p className="text-sm text-muted-foreground">
+                            These links will be displayed on your portfolio banner as clickable badges. 
+                            Only filled fields will be shown to visitors.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
