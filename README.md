@@ -9,23 +9,29 @@
  \______/  \______/  \_______/ \_______/|__/    \______/ |__/|__/ \______/ 
 ```
                                                                                                                                         
-## 🚀 About CodeFolio  
+## About CodeFolio
 
-**CodeFolio** is a modern portFolio creation and sharing platform designed for developers, designers, and professionals to showcase their skills, projects, and resumes.  
+**CodeFolio** is a modern portfolio creation and sharing platform designed for students, developers, designers, and professionals to showcase their work, skills, and resumes in a clean, professional format.  
 
-Built with **Firebase** as the backend, CodeFolio ensures seamless authentication, secure data storage, and smooth integrations.  
+Built on **Firebase**, CodeFolio provides seamless authentication, secure data storage, fast performance, and smooth cross-device syncing. Users can create polished profiles without needing to build a website from scratch.
 
-## ✨ Features  
+---
 
-- 🔑 **Firebase Integration** – secure authentication and backend management  
-- 🌐 **Profile Discoveries** – find and connect with others in the community  
-- 📄 **Resume Upload** – upload and share your professional resume  
-- 🎨 **Profile Customizability** – personalize your portfolio with unique styles  
-- 🤝 **Connections** – grow your network and collaborate  
-- 🛠️ **More Features Coming Soon...**  
+## Features
 
-## 🛠️ Tech Stack  
+- **Firebase Authentication** – secure login, account management, and real-time sync  
+- **Discover Profiles** – explore portfolios from other users and grow your network  
+- **Resume Upload** – upload and display your professional PDF resume directly on your profile  
+- **Project Showcases** – add images, links, descriptions, and documents to highlight your best work  
+- **Profile Customization** – personalize your profile with photos, banners, bios, links, and layout options  
+- **Connections** – send and accept connection requests to build your professional community  
+- **Verification Badges** – student, portfolio, and certification badges for added credibility  
+- **QR Code Business Cards** – generate a QR code linking directly to your portfolio  
+- **More Features Coming Soon…** (analytics, messaging, templates, AI resume feedback)
 
-- **Frontend:** Next.js / React / Tailwind
-- **Backend:** Firebase (Auth, Firestore, Storage)  
+
+## Tech Stack
+
+- **Frontend:** Next.js (App Router) / React / Tailwind CSS
+- **Backend:** Firebase (Authentication, Firestore Database, Storage)  
 - **Deployment:** Vercel  
