@@ -29,3 +29,5 @@ next-env.d.ts
 # documentation
 DATABASE_SETUP.md
 CONNECTION_SETUP.md
+FIREBASE_CONNECTION_FIX.md
+LIVE_FEED_SETUP.md
