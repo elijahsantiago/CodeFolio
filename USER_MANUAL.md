@@ -698,7 +698,7 @@ allow create: if request.resource.data.userId == request.auth.uid;
 ### Getting Help
 
 **For Users:**
-- **Email**: [support@codefolio.app]
+- **Email**: CodeFolioGGC@gmail.com
 - **GitHub Issues**: [repository-url/issues]
 - **Community Forum**: [Coming Soon]
 
