@@ -4,7 +4,7 @@
 
 **Date:** August 2025  
 **Project Title:** CodeFolio - Student Portfolio Showcase Platform  
-**Team:** Elijah Santiago & Contributors
+**Team:** Elijah Santiago & Gabriel Sosa
 
 > This project was developed as part of the SD Capstone course at GGC under Dr. B.
 
@@ -720,14 +720,14 @@ allow create: if request.resource.data.userId == request.auth.uid;
 
 We love hearing your ideas! Submit feature requests via:
 - GitHub Discussions
-- Email: [feature-requests@codefolio.app]
+- Email: CodeFolioGGC@gmail.com
 
 ---
 
 ## Version Information
 
 **Current Version**: 1.0.0  
-**Last Updated**: January 2025  
+**Last Updated**: August 2025  
 **Manual Version**: 1.0
 
 ---
@@ -741,7 +741,3 @@ CodeFolio was built to solve a real problem faced by students everywhere. Thank 
 - Every student who inspired this project
 
 **Remember**: Your portfolio is your superpower. Show the world what you can do.
-
----
-
-*End of User Manual*
