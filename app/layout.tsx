@@ -11,7 +11,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "CodeFo",
+  title: "CodeFolio",
   description: "Created with v0",
   generator: "v0.app.",
 }
